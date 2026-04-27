@@ -1,0 +1,88 @@
+  {{> site-footer}}
+  <div class="auth-overlay" data-auth-overlay hidden>
+    <section class="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <button class="auth-close" type="button" data-auth-close aria-label="关闭">×</button>
+
+      <div class="auth-head">
+        <span class="auth-mark">K</span>
+        <div>
+          <p class="auth-kicker" data-auth-kicker>Kizu ID</p>
+          <h2 id="auth-title">欢迎回来</h2>
+          <p data-auth-copy>登录后继续评论和管理你的内容。</p>
+        </div>
+      </div>
+
+      <form class="auth-form" data-auth-form="setup" hidden>
+        <label>
+          <span>站点名称</span>
+          <input name="siteTitle" value="Kizu Blog" autocomplete="organization">
+        </label>
+        <label>
+          <span>管理员用户名</span>
+          <input name="username" required autocomplete="username" minlength="3">
+        </label>
+        <label>
+          <span>显示名称</span>
+          <input name="displayName" value="伊甸黎明" autocomplete="name">
+        </label>
+        <label>
+          <span>邮箱</span>
+          <input name="email" type="email" autocomplete="email">
+        </label>
+        <label>
+          <span>密码</span>
+          <input name="password" type="password" required autocomplete="new-password" minlength="8">
+        </label>
+        <button type="submit">开始使用</button>
+      </form>
+
+      <form class="auth-form" data-auth-form="login">
+        <label>
+          <span>用户名或邮箱</span>
+          <input name="login" required autocomplete="username">
+        </label>
+        <label>
+          <span>密码</span>
+          <input name="password" type="password" required autocomplete="current-password">
+        </label>
+        <button type="submit">登录</button>
+        <p class="auth-switch">还没有账号？<button type="button" data-auth-mode="register">创建一个</button></p>
+      </form>
+
+      <form class="auth-form" data-auth-form="register" hidden>
+        <label>
+          <span>用户名</span>
+          <input name="username" required autocomplete="username" minlength="3">
+        </label>
+        <label>
+          <span>显示名称</span>
+          <input name="displayName" autocomplete="name">
+        </label>
+        <label>
+          <span>邮箱</span>
+          <input name="email" type="email" autocomplete="email">
+        </label>
+        <label>
+          <span>密码</span>
+          <input name="password" type="password" required autocomplete="new-password" minlength="8">
+        </label>
+        <button type="submit">创建账号</button>
+        <p class="auth-switch">已有账号？<button type="button" data-auth-mode="login">直接登录</button></p>
+      </form>
+
+      <div class="auth-profile" data-auth-profile hidden>
+        <div class="profile-badge" data-profile-initial>我</div>
+        <h3 data-profile-name>已登录</h3>
+        <p data-profile-role></p>
+        <div class="profile-actions">
+          <a href="/admin/" data-admin-link hidden>进入后台</a>
+          <button type="button" data-auth-logout>退出登录</button>
+        </div>
+      </div>
+
+      <p class="auth-message" data-auth-message role="status"></p>
+    </section>
+  </div>
+  <script src="/assets/js/site.js" defer></script>
+</body>
+</html>

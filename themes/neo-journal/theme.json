@@ -1,0 +1,35 @@
+{
+  "name": "neo-journal",
+  "displayName": "Neo Journal",
+  "version": "0.1.0",
+  "engine": ">=0.1.0",
+  "author": "Kizu Blog",
+  "description": "A calm editorial theme with a dashboard-like home page, dense archive views, and stable semantic hooks.",
+  "assets": "assets",
+  "capabilities": [
+    "template-hierarchy",
+    "partials",
+    "slots",
+    "responsive-layout",
+    "rss-ready"
+  ],
+  "templates": {
+    "home": "templates/home.html",
+    "post": "templates/post.html",
+    "page": "templates/page.html",
+    "archive": "templates/archive.html",
+    "404": "templates/404.html"
+  },
+  "slots": [
+    "head",
+    "beforeContent",
+    "afterContent",
+    "footer"
+  ],
+  "defaults": {
+    "accent": "#d84f3f",
+    "surface": "#fffaf4",
+    "showReadingTime": true,
+    "showFeaturedRail": true
+  }
+}

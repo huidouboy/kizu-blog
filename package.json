@@ -1,0 +1,50 @@
+{
+  "name": "kizu-blog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A zero-dependency blog CMS with setup wizard, admin console, public accounts, and a stable theme contract.",
+  "scripts": {
+    "start": "node scripts/start.mjs",
+    "dev": "node scripts/start.mjs",
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/serve.mjs",
+    "clean": "node scripts/clean.mjs",
+    "export:release": "node scripts/export-release.mjs",
+    "upgrade": "node scripts/upgrade.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "kizu": {
+    "product": "kizu-blog",
+    "release": "0.1",
+    "upgrade": {
+      "schema": 1,
+      "managedFiles": [
+        ".gitignore",
+        "package.json",
+        "README.md",
+        "site.config.json"
+      ],
+      "managedDirectories": [
+        "admin",
+        "content",
+        "docs",
+        "scripts",
+        "src"
+      ],
+      "managedThemes": [
+        "neo-journal"
+      ],
+      "preserve": [
+        "data",
+        "public",
+        "node_modules",
+        ".git",
+        ".kizu",
+        "themes/<non-managed>"
+      ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{{> document-open}}
+  <main id="content" class="archive-layout">
+    <header class="archive-head">
+      <p class="eyebrow">{{ archive.type }}</p>
+      <h1>{{ archive.name }}</h1>
+      <p>{{ description }}</p>
+    </header>
+    <section class="archive-list" aria-label="{{ archive.name }}">
+      {{#each archive.posts}}
+        <article class="archive-item">
+          <time>{{ this.displayDate }}</time>
+          <div>
+            <h2><a href="{{ this.path }}">{{ this.title }}</a></h2>
+            <p>{{ this.excerpt }}</p>
+          </div>
+        </article>
+      {{/each}}
+    </section>
+  </main>
+{{> document-close}}

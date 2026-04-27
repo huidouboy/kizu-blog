@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-label="Static publishing pipeline from notes to pages">
+  <rect width="1200" height="760" fill="#fff8ec"/>
+  <rect x="92" y="128" width="260" height="504" rx="12" fill="#ffffff" stroke="#decfbd" stroke-width="3"/>
+  <rect x="470" y="128" width="260" height="504" rx="12" fill="#253331"/>
+  <rect x="848" y="128" width="260" height="504" rx="12" fill="#ffffff" stroke="#decfbd" stroke-width="3"/>
+  <path d="M372 380h78M750 380h78" stroke="#d84f3f" stroke-width="12" stroke-linecap="round"/>
+  <path d="M428 348l34 32-34 32M806 348l34 32-34 32" fill="none" stroke="#d84f3f" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="140" y="188" width="148" height="22" fill="#2d746c"/>
+  <rect x="140" y="258" width="160" height="14" fill="#7d7168"/>
+  <rect x="140" y="300" width="116" height="14" fill="#7d7168"/>
+  <rect x="140" y="342" width="172" height="14" fill="#7d7168"/>
+  <rect x="528" y="202" width="144" height="22" fill="#fff4e1"/>
+  <rect x="528" y="280" width="120" height="14" fill="#8bc3b5"/>
+  <rect x="528" y="322" width="146" height="14" fill="#8bc3b5"/>
+  <rect x="528" y="364" width="106" height="14" fill="#8bc3b5"/>
+  <rect x="896" y="188" width="148" height="22" fill="#a16f22"/>
+  <rect x="896" y="258" width="160" height="14" fill="#7d7168"/>
+  <rect x="896" y="300" width="116" height="14" fill="#7d7168"/>
+  <rect x="896" y="342" width="172" height="14" fill="#7d7168"/>
+</svg>
