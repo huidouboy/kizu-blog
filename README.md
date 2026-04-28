@@ -281,3 +281,5 @@ kizu (伊甸黎明)
 ## License
 
 MIT. See [LICENSE](./LICENSE).
+
+<!-- Trigger GitHub Pages deployment check. -->
