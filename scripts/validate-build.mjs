@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { runInNewContext } from "node:vm";
@@ -25,6 +25,7 @@ const files = {
   page: "dist/pages/about/index.html",
   rss: "dist/rss.xml",
   search: "dist/search-index.json",
+  searchScript: "dist/assets/theme/search-overlay.js",
   sitemap: "dist/sitemap.xml",
   tag: "dist/tags/markdown/index.html",
   tokens: "dist/assets/theme/tokens.css",
@@ -54,11 +55,16 @@ assertIncludes(contents.home, 'data-i18n="personalBlogPrefix"', files.home);
 assertIncludes(contents.home, "Static Author", files.home);
 assertIncludes(contents.home, 'data-i18n="search"', files.home);
 assertIncludes(contents.home, "data-search-open", files.home);
+assertIncludes(contents.home, 'data-search-index-path="search-index.json"', files.home);
+assertIncludes(contents.archive, 'data-search-index-path="../search-index.json"', files.archive);
+assertIncludes(contents.post, 'data-search-index-path="../../search-index.json"', files.post);
+assertIncludes(contents.page, 'data-search-index-path="../../search-index.json"', files.page);
 assertIncludes(contents.home, 'role="dialog"', files.home);
 assertIncludes(contents.home, "data-search-input", files.home);
+assertIncludes(contents.home, "data-search-status", files.home);
+assertIncludes(contents.home, "data-search-results", files.home);
+assertIncludes(contents.home, 'data-i18n-placeholder="searchPlaceholder"', files.home);
 assertIncludes(contents.home, "Cmd", files.home);
-assertIncludes(contents.home, "isEditableTarget", files.home);
-assertIncludes(contents.home, "event.target !== input", files.home);
 assertNotIncludes(contents.home, "search-box", files.home);
 assertIncludes(contents.home, "首页", files.home);
 assertIncludes(contents.home, "pages/about/index.html", files.home);
@@ -77,6 +83,7 @@ assertIncludes(contents.rss, "<title>Hello World</title>", files.rss);
 assertIncludes(contents.rss, "https://example.com/posts/hello-world/", files.rss);
 assertIncludes(contents.search, '"title": "Hello World"', files.search);
 assertIncludes(contents.search, '"url": "/posts/hello-world/"', files.search);
+assertIncludes(contents.search, '"excerpt": "This post is written in Markdown and rendered as a static HTML file. Markdown is the source of truth. The generated output is plain HTML. No database is required."', files.search);
 assertIncludes(contents.sitemap, "https://example.com/posts/hello-world/", files.sitemap);
 assertIncludes(contents.sitemap, "https://example.com/tags/markdown/", files.sitemap);
 assertIncludes(contents.tokens, "--radius-lg", files.tokens);
@@ -85,8 +92,16 @@ assertIncludes(contents.global, ".sidebar-false", files.global);
 assertIncludes(contents.global, ".animation-fade", files.global);
 assertIncludes(contents.global, ".search-overlay", files.global);
 assertIncludes(contents.global, ".search-panel", files.global);
+assertIncludes(contents.global, ".search-status", files.global);
+assertIncludes(contents.global, ".search-result-link", files.global);
 assertIncludes(contents.global, ".site-header.is-hidden", files.global);
 assertIncludes(contents.tokens, "cubic-bezier(0.22, 1, 0.36, 1)", files.tokens);
+assertIncludes(contents.searchScript, "isEditableTarget", files.searchScript);
+assertIncludes(contents.searchScript, "fetch(searchIndexPath", files.searchScript);
+assertIncludes(contents.searchScript, "routeToRelativeHref", files.searchScript);
+assertIncludes(contents.searchScript, "ArrowDown", files.searchScript);
+assertIncludes(contents.searchScript, "event.target !== input", files.searchScript);
+assertIncludes(contents.searchScript, "hasIndexError", files.searchScript);
 
 await validateArchitectureBoundaries();
 await validateContentLoading();
@@ -106,6 +121,7 @@ for (const [key, content] of Object.entries(contents)) {
 
 await validateLegacyTemplateVariables();
 await validatePluginHooks();
+await validateSearchWithoutPlugin();
 await validateBaseUrlSubpath();
 
 console.log("Static build validation passed.");
@@ -686,6 +702,62 @@ export default plugin;
     assertIncludes(postHtml, "Transformed by plugin.", "hook post");
     assertIncludes(postHtml, 'meta name="hook-head" content="ok"', "hook post");
     assertIncludes(postHtml, 'id="hook-body"', "hook post");
+  } finally {
+    await rm(projectDir, { recursive: true, force: true });
+  }
+}
+
+async function validateSearchWithoutPlugin() {
+  const projectDir = await mkdtemp(join(tmpdir(), "static-blog-search-optional-"));
+
+  try {
+    await mkdir(join(projectDir, "config"), { recursive: true });
+    await mkdir(join(projectDir, "content", "posts"), { recursive: true });
+    await mkdir(join(projectDir, "content", "pages"), { recursive: true });
+    await cp(join(rootDir, "themes", "default"), join(projectDir, "themes", "default"), {
+      recursive: true,
+    });
+    await writeFile(
+      join(projectDir, "config", "site.json"),
+      JSON.stringify({
+        title: "Optional Search Site",
+        description: "Plugin optional check",
+        author: "Tester",
+        language: "en",
+      }),
+    );
+    await writeFile(
+      join(projectDir, "config", "theme.json"),
+      JSON.stringify({
+        theme: "default",
+        settings: {
+          accentColor: "#0f766e",
+          layout: "classic",
+          showSidebar: "true",
+          animation: "fade",
+        },
+      }),
+    );
+    await writeFile(
+      join(projectDir, "content", "posts", "optional-search.md"),
+      `---\ntitle: Optional Search\ndate: 2026-04-28\ntags: [search]\ndraft: false\ndescription: Search plugin is disabled here.\n---\nSearch works as an optional enhancement.\n`,
+    );
+
+    await buildSite({ rootDir: projectDir });
+
+    if (await pathExists(join(projectDir, "dist", "search-index.json"))) {
+      throw new Error("Search index should not be generated when plugin-search is disabled.");
+    }
+
+    const homeHtml = await readFile(join(projectDir, "dist", "index.html"), "utf8");
+    const searchScript = await readFile(
+      join(projectDir, "dist", "assets", "theme", "search-overlay.js"),
+      "utf8",
+    );
+
+    assertIncludes(homeHtml, 'data-search-overlay', "optional search home");
+    assertIncludes(homeHtml, 'data-search-status', "optional search home");
+    assertIncludes(searchScript, "hasIndexError = true", "optional search script");
   } finally {
     await rm(projectDir, { recursive: true, force: true });
   }

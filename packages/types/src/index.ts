@@ -93,6 +93,7 @@ export interface RenderListItem {
   date: string;
   description: string;
   tags: string;
+  excerpt?: string;
 }
 
 export interface RenderContext {

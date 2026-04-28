@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="../../assets/theme/global.css">
   {{ui.script}}
 </head>
-<body class="layout-{{theme.layout}} sidebar-{{theme.showSidebar}} animation-{{theme.animation}}" data-content-type="{{content.type}}" data-path="{{path}}">
+<body class="layout-{{theme.layout}} sidebar-{{theme.showSidebar}} animation-{{theme.animation}}" data-content-type="{{content.type}}" data-path="{{path}}" data-ui-locale-mode="{{ui.locale}}">
   <header class="site-header" data-slot="header">
     <div class="site-brand">
       <a class="site-title" href="../../index.html">{{site.title}}</a>
@@ -39,7 +39,7 @@
   <footer class="site-footer" data-slot="footer">
     <a href="../../archive/index.html">{{ui.browseArchive}}</a>
   </footer>
-  <div class="search-overlay" data-search-overlay hidden>
+  <div class="search-overlay" data-search-overlay data-search-index-path="../../search-index.json" hidden>
     <button class="search-backdrop" type="button" data-search-close aria-label="{{uiText.closeSearch}}" data-i18n-aria-label="closeSearch"></button>
     <section class="search-panel" data-search-panel role="dialog" aria-modal="true" aria-label="{{uiText.search}}" data-i18n-aria-label="search">
       <label class="command-search-field">
@@ -48,100 +48,22 @@
           <path d="m16.5 16.5 4.5 4.5"></path>
         </svg>
         <span class="sr-only" data-i18n="search">{{uiText.search}}</span>
-        <input data-search-input type="search" autocomplete="off" placeholder="{{uiText.search}}" data-i18n-placeholder="search">
+        <input data-search-input type="search" autocomplete="off" placeholder="{{uiText.searchPlaceholder}}" data-i18n-placeholder="searchPlaceholder">
       </label>
       <div class="search-hint" aria-hidden="true">
         <kbd>Ctrl</kbd><kbd>K</kbd><span>/</span><kbd>Cmd</kbd><kbd>K</kbd>
       </div>
+      <p class="search-status" data-search-status role="status" aria-live="polite" data-i18n="searchStartTyping">{{uiText.searchStartTyping}}</p>
+      <ul class="search-results" data-search-results role="listbox" aria-label="{{uiText.search}}" data-i18n-aria-label="search"></ul>
+      <div class="sr-only" aria-hidden="true">
+        <span data-search-label="startTyping" data-i18n="searchStartTyping">{{uiText.searchStartTyping}}</span>
+        <span data-search-label="noResults" data-i18n="searchNoResults">{{uiText.searchNoResults}}</span>
+        <span data-search-label="failed" data-i18n="searchFailed">{{uiText.searchFailed}}</span>
+        <span data-search-label="post" data-i18n="post">{{uiText.post}}</span>
+        <span data-search-label="page" data-i18n="page">{{uiText.page}}</span>
+      </div>
     </section>
   </div>
-  <script>
-(() => {
-  const body = document.body;
-  const header = document.querySelector(".site-header");
-  const overlay = document.querySelector("[data-search-overlay]");
-  const input = overlay ? overlay.querySelector("[data-search-input]") : null;
-  const openButtons = document.querySelectorAll("[data-search-open]");
-  const closeButtons = overlay ? overlay.querySelectorAll("[data-search-close]") : [];
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let restoreFocus = null;
-  let closeTimer = 0;
-  let lastScrollY = window.scrollY;
-  let scrollTicking = false;
-
-  if (!overlay || !input) return;
-
-  const openSearch = () => {
-    window.clearTimeout(closeTimer);
-    restoreFocus = document.activeElement && typeof document.activeElement.focus === "function" ? document.activeElement : null;
-    overlay.hidden = false;
-    body.classList.add("search-open");
-    if (header) header.classList.remove("is-hidden");
-    window.requestAnimationFrame(() => {
-      overlay.classList.add("is-open");
-      input.focus({ preventScroll: true });
-      input.select();
-    });
-  };
-
-  const closeSearch = () => {
-    if (overlay.hidden) return;
-    overlay.classList.remove("is-open");
-    body.classList.remove("search-open");
-    closeTimer = window.setTimeout(() => {
-      overlay.hidden = true;
-    }, reduceMotion ? 0 : 180);
-    if (restoreFocus && typeof restoreFocus.focus === "function") {
-      restoreFocus.focus({ preventScroll: true });
-    }
-  };
-
-  openButtons.forEach((button) => button.addEventListener("click", openSearch));
-  closeButtons.forEach((button) => button.addEventListener("click", closeSearch));
-  const isEditableTarget = (target) => {
-    if (!(target instanceof Element)) return false;
-    if (target instanceof HTMLElement && target.isContentEditable) return true;
-    return ["input", "textarea", "select"].includes(target.tagName.toLowerCase());
-  };
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !overlay.hidden) {
-      event.preventDefault();
-      closeSearch();
-      return;
-    }
-
-    const key = String(event.key).toLowerCase();
-    if ((event.metaKey || event.ctrlKey) && key === "k") {
-      if (isEditableTarget(event.target) && event.target !== input) return;
-      event.preventDefault();
-      openSearch();
-      return;
-    }
-  });
-
-  const shouldHideHeader = header && body.dataset.contentType === "post";
-  const updateHeader = () => {
-    const currentScrollY = window.scrollY;
-    if (body.classList.contains("search-open") || currentScrollY < 96) {
-      header.classList.remove("is-hidden");
-    } else if (currentScrollY > lastScrollY + 8) {
-      header.classList.add("is-hidden");
-    } else if (currentScrollY < lastScrollY - 8) {
-      header.classList.remove("is-hidden");
-    }
-    lastScrollY = currentScrollY;
-    scrollTicking = false;
-  };
-
-  if (shouldHideHeader) {
-    window.addEventListener("scroll", () => {
-      if (!scrollTicking) {
-        window.requestAnimationFrame(updateHeader);
-        scrollTicking = true;
-      }
-    }, { passive: true });
-  }
-})();
-  </script>
+  <script src="../../assets/theme/search-overlay.js"></script>
 </body>
 </html>

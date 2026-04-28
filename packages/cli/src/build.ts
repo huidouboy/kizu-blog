@@ -453,6 +453,7 @@ function createPostListItem(post: PostContent): RenderListItem {
     date: escapeHtml(post.frontmatter.date),
     description: escapeHtml(post.frontmatter.description ?? ""),
     tags: escapeHtml(post.frontmatter.tags.join(", ")),
+    excerpt: escapeHtml(createExcerptFromMarkdown(post.rawBody, post.frontmatter.description)),
   };
 }
 
@@ -464,6 +465,7 @@ function createPageListItem(page: PageContent): RenderListItem {
     date: "",
     description: escapeHtml(page.frontmatter.description ?? ""),
     tags: "",
+    excerpt: escapeHtml(createExcerptFromMarkdown(page.rawBody, page.frontmatter.description)),
   };
 }
 
@@ -923,6 +925,7 @@ function createRawPostListItem(post: PostContent): RenderListItem {
     date: post.frontmatter.date,
     description: post.frontmatter.description ?? "",
     tags: post.frontmatter.tags.join(", "),
+    excerpt: createExcerptFromMarkdown(post.rawBody, post.frontmatter.description),
   };
 }
 
@@ -934,6 +937,7 @@ function createRawPageListItem(page: PageContent): RenderListItem {
     date: "",
     description: page.frontmatter.description ?? "",
     tags: "",
+    excerpt: createExcerptFromMarkdown(page.rawBody, page.frontmatter.description),
   };
 }
 
@@ -1052,6 +1056,26 @@ function escapeXml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&apos;");
+}
+
+function createExcerptFromMarkdown(markdown: string, fallback?: string): string {
+  const plainText = markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^[-*]\s+/gm, "")
+    .replace(/[>*_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const source = plainText || fallback?.trim() || "";
+
+  if (!source) {
+    return "";
+  }
+
+  return source.length > 180 ? `${source.slice(0, 177).trimEnd()}...` : source;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -73,6 +73,10 @@ export const uiDictionaries: Record<UiLocale, UiDictionary> = {
     saveTheme: "Save theme",
     saved: "Saved.",
     search: "Search",
+    searchFailed: "Search index failed to load.",
+    searchNoResults: "No matching results.",
+    searchPlaceholder: "Search posts and pages",
+    searchStartTyping: "Start typing to search posts and pages.",
     siteConfig: "Site config",
     slug: "Slug",
     tag: "Tag",
@@ -169,6 +173,13 @@ export const uiDictionaries: Record<UiLocale, UiDictionary> = {
   },
 };
 
+Object.assign(uiDictionaries["zh-CN"], {
+  searchFailed: "\u641c\u7d22\u7d22\u5f15\u52a0\u8f7d\u5931\u8d25\u3002",
+  searchNoResults: "\u6ca1\u6709\u627e\u5230\u5339\u914d\u7ed3\u679c\u3002",
+  searchPlaceholder: "\u641c\u7d22\u6587\u7ae0\u6216\u9875\u9762",
+  searchStartTyping: "\u5f00\u59cb\u8f93\u5165\u4ee5\u641c\u7d22\u6587\u7ae0\u548c\u9875\u9762\u3002",
+});
+
 const publicUiKeys = [
   "archive",
   "backToHome",
@@ -195,6 +206,10 @@ const publicUiKeys = [
   "readingTime",
   "readingTimeValue",
   "search",
+  "searchFailed",
+  "searchNoResults",
+  "searchPlaceholder",
+  "searchStartTyping",
   "tag",
   "taggedPostsDescriptionPrefix",
   "tags",

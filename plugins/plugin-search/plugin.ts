@@ -17,12 +17,14 @@ const plugin: Plugin = {
           title: post.title,
           description: post.description,
           tags: post.tags,
+          excerpt: createExcerpt(post),
           url: post.url,
         })),
         pages: context.pages.map((page) => ({
           type: "page",
           title: page.title,
           description: page.description,
+          excerpt: createExcerpt(page),
           url: page.url,
         })),
       };
@@ -37,3 +39,29 @@ const plugin: Plugin = {
 };
 
 export default plugin;
+
+function createExcerpt(entry: {
+  description?: string;
+  excerpt?: string;
+  tags?: string;
+  title: string;
+}): string {
+  const derivedExcerpt = entry.excerpt?.trim();
+
+  if (derivedExcerpt) {
+    return derivedExcerpt;
+  }
+
+  const preferredText = entry.description?.trim();
+
+  if (preferredText) {
+    return preferredText;
+  }
+
+  const fallback = [entry.title, entry.tags ?? ""]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return fallback;
+}
