@@ -197,7 +197,7 @@ async function renderHomePage(context: BuildRenderContext): Promise<string> {
 
   return renderThemeTemplate(context.theme.layouts.home, context, renderContext, {
     home: {
-      posts: renderPostList(renderContext.posts, "", renderContext.ui),
+      posts: renderPostCards(context.posts, "", renderContext.ui, context.site.language),
       pages: renderPageList(renderContext.pages, "", renderContext.ui),
       tags: renderTagCloud(context.tagGroups, "", renderContext.ui),
     },
@@ -240,7 +240,7 @@ async function renderTagPage(context: BuildRenderContext, tagGroup: TagGroup): P
     tag: {
       name: escapeHtml(tagGroup.name),
       description: `${renderContext.ui.taggedPostsDescriptionPrefix}${escapeHtml(tagGroup.name)}`,
-      posts: renderPostList(tagGroup.posts.map(createPostListItem), "../../", renderContext.ui),
+      posts: renderPostCards(tagGroup.posts, "../../", renderContext.ui, context.site.language),
     },
   });
 }
@@ -263,7 +263,7 @@ async function renderArchivePage(context: BuildRenderContext): Promise<string> {
 
   return renderThemeTemplate(context.theme.layouts.archive, context, renderContext, {
     archive: {
-      posts: renderPostList(renderContext.posts, "../", renderContext.ui),
+      posts: renderPostCards(context.posts, "../", renderContext.ui, context.site.language),
     },
   });
 }
@@ -413,7 +413,7 @@ function createArchiveContent(context: BuildRenderContext): ContentObject {
 
   return {
     title: uiText.archive,
-    content: `<ul class="content-list">\n${renderPostList(context.posts.map(createPostListItem), "../", ui)}\n</ul>`,
+    content: `<div class="post-card-grid archive-grid">\n${renderPostCards(context.posts, "../", ui, context.site.language)}\n</div>`,
     date: "",
     tags: "",
     description: escapeHtml(context.site.description ?? ""),
@@ -432,7 +432,7 @@ function createTagContent(context: BuildRenderContext, tagGroup: TagGroup): Cont
 
   return {
     title: `${uiText.tag}: ${escapeHtml(tagGroup.name)}`,
-    content: `<ul class="content-list">\n${renderPostList(tagGroup.posts.map(createPostListItem), "../../", ui)}\n</ul>`,
+    content: `<div class="post-card-grid archive-grid">\n${renderPostCards(tagGroup.posts, "../../", ui, context.site.language)}\n</div>`,
     date: "",
     tags: escapeHtml(tagGroup.name),
     description: `${uiText.taggedPostsDescriptionPrefix}${escapeHtml(tagGroup.name)}`,
@@ -469,31 +469,68 @@ function createPageListItem(page: PageContent): RenderListItem {
 
 function renderHomeContent(context: BuildRenderContext): string {
   const ui = createStaticUiText(context.site.language);
+  const featuredCount = context.posts.length > 2 ? 2 : Math.min(1, context.posts.length);
+  const featuredPosts = context.posts.slice(0, featuredCount);
+  const latestPosts = context.posts.slice(featuredCount);
+  const latestSection = latestPosts.length > 0
+    ? `<section class="home-section latest-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">${ui.latestPosts}</p>
+      <h2>${ui.archive}</h2>
+    </div>
+  </div>
+  <div class="post-card-grid">
+${renderPostCards(latestPosts, "", ui, context.site.language)}
+  </div>
+</section>`
+    : "";
 
-  return `<section>
-  <h2>${ui.posts}</h2>
-  <ul class="content-list">
-${renderPostList(context.posts.map(createPostListItem), "", ui)}
-  </ul>
-  <p><a class="view-all" href="archive/index.html">${ui.viewAllPosts}</a></p>
-</section>`;
+  return `<section class="home-section featured-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">${ui.featuredPosts}</p>
+      <h2>${ui.posts}</h2>
+    </div>
+    <a class="view-all" href="archive/index.html">${ui.viewAllPosts}</a>
+  </div>
+  <div class="post-card-grid featured-grid">
+${renderPostCards(featuredPosts, "", ui, context.site.language, "featured")}
+  </div>
+</section>
+${latestSection}`;
 }
 
-function renderPostList(posts: RenderListItem[], hrefPrefix: string, ui: Record<string, string>): string {
+function renderPostCards(
+  posts: PostContent[],
+  hrefPrefix: string,
+  ui: Record<string, string>,
+  language: SiteConfig["language"],
+  variant = "",
+): string {
   if (posts.length === 0) {
-    return `<li>${ui.noPostsYet}</li>`;
+    return `<p class="empty-state">${ui.noPostsYet}</p>`;
   }
 
   return posts
     .map((post) => {
-      const summary = post.description
-        ? `  <span class="summary">${post.description}</span>\n`
+      const cardClass = variant === "featured" ? "post-card is-featured" : "post-card";
+      const summary = post.frontmatter.description
+        ? `  <p class="post-card-description">${escapeHtml(post.frontmatter.description)}</p>\n`
         : "";
+      const tags = post.frontmatter.tags.length
+        ? `<div class="post-card-tags">${renderTagLinks(post.frontmatter.tags, hrefPrefix)}</div>`
+        : "";
+      const readingTime = formatReadingTime(calculateReadingMinutes(post.rawBody), language);
 
-      return `<li>
-  <a href="${escapeAttribute(`${hrefPrefix}${post.url}`)}">${post.title}</a>
-  <time datetime="${escapeAttribute(post.date)}">${post.date}</time>
-${summary}</li>`;
+      return `<article class="${cardClass}">
+  <a class="post-card-link" href="${escapeAttribute(`${hrefPrefix}posts/${encodeRouteSegment(post.slug)}/index.html`)}">
+    <span class="post-card-meta"><time datetime="${escapeAttribute(post.frontmatter.date)}">${escapeHtml(post.frontmatter.date)}</time><span>${readingTime}</span></span>
+    <h3>${escapeHtml(post.frontmatter.title)}</h3>
+${summary}    <span class="post-card-arrow" aria-hidden="true">-&gt;</span>
+  </a>
+  ${tags}
+</article>`;
     })
     .join("\n");
 }

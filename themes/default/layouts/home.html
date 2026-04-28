@@ -12,42 +12,44 @@
 </head>
 <body class="layout-{{theme.layout}} sidebar-{{theme.showSidebar}} animation-{{theme.animation}}" data-content-type="{{content.type}}" data-path="{{path}}">
   <header class="site-header" data-slot="header">
-    <div>
+    <div class="site-brand">
       <a class="site-title" href="index.html">{{site.title}}</a>
       <p>{{site.description}}</p>
     </div>
     {{site.navigation}}
   </header>
-  <main class="site-grid" data-slot="main">
-    <section class="content-panel">
+  <main class="home-shell" data-slot="main">
+    <section class="hero-section">
       <p class="eyebrow">{{ui.personalBlogPrefix}}{{site.author}}{{ui.personalBlogSuffix}}</p>
       <h1>{{content.title}}</h1>
       <p class="lede">{{content.description}}</p>
-      {{content.content}}
-    </section>
-    <aside class="sidebar" data-slot="sidebar">
-      <section>
+      <div class="hero-actions">
+        <a class="primary-link" href="archive/index.html">{{ui.viewAllPosts}}</a>
         <label class="search-box">
           <span>{{ui.search}}</span>
           <input type="search" name="q" autocomplete="off">
         </label>
-      </section>
-      <section>
+      </div>
+    </section>
+    {{content.content}}
+    <section class="home-section preview-grid" data-slot="sidebar">
+      <div class="preview-card">
         <h2>{{ui.pages}}</h2>
-        <ul class="content-list compact-list">
+        <ul class="page-list">
 {{home.pages}}
         </ul>
-      </section>
-      <section>
+      </div>
+      <div class="preview-card">
         <h2>{{ui.tags}}</h2>
         <div class="tag-cloud">
 {{home.tags}}
         </div>
-      </section>
-    </aside>
+      </div>
+    </section>
   </main>
   <footer class="site-footer" data-slot="footer">
-    <span>{{site.title}} {{site.author}}</span>
+    <span>{{site.title}}</span>
+    <a href="archive/index.html">{{ui.browseArchive}}</a>
   </footer>
 </body>
 </html>

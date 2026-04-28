@@ -12,17 +12,19 @@
 </head>
 <body class="layout-{{theme.layout}} sidebar-{{theme.showSidebar}} animation-{{theme.animation}}" data-content-type="{{content.type}}" data-path="{{path}}">
   <header class="site-header" data-slot="header">
-    <div>
+    <div class="site-brand">
       <a class="site-title" href="../../index.html">{{site.title}}</a>
       <p>{{site.description}}</p>
     </div>
     {{site.navigation}}
   </header>
   <main class="article-shell" data-slot="main">
-    <article class="article">
+    <header class="page-hero">
       <p class="eyebrow">{{ui.page}}</p>
       <h1>{{content.title}}</h1>
       <p class="description">{{content.description}}</p>
+    </header>
+    <article class="article">
       <div class="article-body">
         {{content.content}}
       </div>
