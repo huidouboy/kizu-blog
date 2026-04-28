@@ -86,7 +86,7 @@ This only affects built-in UI labels such as Home, Archive, Tags, Reading time, 
 
 ## Deployment
 
-GitHub Pages is the primary target. The workflow in `.github/workflows/deploy-pages.yml` installs dependencies, typechecks, builds, validates, and deploys `dist/`.
+GitHub Pages is the primary target. The workflow in `.github/workflows/pages.yml` installs dependencies, typechecks, builds, validates, and deploys `dist/`.
 
 Cloudflare Pages can use:
 
