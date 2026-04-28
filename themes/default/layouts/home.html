@@ -16,7 +16,15 @@
       <a class="site-title" href="index.html">{{site.title}}</a>
       <p>{{site.description}}</p>
     </div>
-    {{site.navigation}}
+    <div class="header-actions">
+      {{site.navigation}}
+      <button class="search-trigger" type="button" data-search-open aria-label="{{uiText.search}}" data-i18n-aria-label="search">
+        <svg class="search-trigger-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m16.5 16.5 4.5 4.5"></path>
+        </svg>
+      </button>
+    </div>
   </header>
   <main class="home-shell" data-slot="main">
     <section class="hero-section">
@@ -25,10 +33,6 @@
       <p class="lede">{{content.description}}</p>
       <div class="hero-actions">
         <a class="primary-link" href="archive/index.html">{{ui.viewAllPosts}}</a>
-        <label class="search-box">
-          <span>{{ui.search}}</span>
-          <input type="search" name="q" autocomplete="off">
-        </label>
       </div>
     </section>
     {{content.content}}
@@ -51,5 +55,98 @@
     <span>{{site.title}}</span>
     <a href="archive/index.html">{{ui.browseArchive}}</a>
   </footer>
+  <div class="search-overlay" data-search-overlay hidden>
+    <button class="search-backdrop" type="button" data-search-close aria-label="{{uiText.closeSearch}}" data-i18n-aria-label="closeSearch"></button>
+    <section class="search-panel" data-search-panel role="dialog" aria-modal="true" aria-label="{{uiText.search}}" data-i18n-aria-label="search">
+      <label class="command-search-field">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m16.5 16.5 4.5 4.5"></path>
+        </svg>
+        <span class="sr-only" data-i18n="search">{{uiText.search}}</span>
+        <input data-search-input type="search" autocomplete="off" placeholder="{{uiText.search}}" data-i18n-placeholder="search">
+      </label>
+      <div class="search-hint" aria-hidden="true">
+        <kbd>Ctrl</kbd><kbd>K</kbd><span>/</span><kbd>Cmd</kbd><kbd>K</kbd>
+      </div>
+    </section>
+  </div>
+  <script>
+(() => {
+  const body = document.body;
+  const header = document.querySelector(".site-header");
+  const overlay = document.querySelector("[data-search-overlay]");
+  const input = overlay ? overlay.querySelector("[data-search-input]") : null;
+  const openButtons = document.querySelectorAll("[data-search-open]");
+  const closeButtons = overlay ? overlay.querySelectorAll("[data-search-close]") : [];
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let restoreFocus = null;
+  let closeTimer = 0;
+  let lastScrollY = window.scrollY;
+  let scrollTicking = false;
+
+  if (!overlay || !input) return;
+
+  const openSearch = () => {
+    window.clearTimeout(closeTimer);
+    restoreFocus = document.activeElement && typeof document.activeElement.focus === "function" ? document.activeElement : null;
+    overlay.hidden = false;
+    body.classList.add("search-open");
+    if (header) header.classList.remove("is-hidden");
+    window.requestAnimationFrame(() => {
+      overlay.classList.add("is-open");
+      input.focus({ preventScroll: true });
+      input.select();
+    });
+  };
+
+  const closeSearch = () => {
+    if (overlay.hidden) return;
+    overlay.classList.remove("is-open");
+    body.classList.remove("search-open");
+    closeTimer = window.setTimeout(() => {
+      overlay.hidden = true;
+    }, reduceMotion ? 0 : 180);
+    if (restoreFocus && typeof restoreFocus.focus === "function") {
+      restoreFocus.focus({ preventScroll: true });
+    }
+  };
+
+  openButtons.forEach((button) => button.addEventListener("click", openSearch));
+  closeButtons.forEach((button) => button.addEventListener("click", closeSearch));
+  document.addEventListener("keydown", (event) => {
+    const key = String(event.key).toLowerCase();
+    if ((event.metaKey || event.ctrlKey) && key === "k") {
+      event.preventDefault();
+      openSearch();
+      return;
+    }
+    if (event.key === "Escape") closeSearch();
+  });
+
+  const shouldHideHeader = header && body.dataset.contentType === "post";
+  const updateHeader = () => {
+    const currentScrollY = window.scrollY;
+    if (body.classList.contains("search-open") || currentScrollY < 96) {
+      header.classList.remove("is-hidden");
+    } else if (currentScrollY > lastScrollY + 8) {
+      header.classList.add("is-hidden");
+    } else if (currentScrollY < lastScrollY - 8) {
+      header.classList.remove("is-hidden");
+    }
+    lastScrollY = currentScrollY;
+    scrollTicking = false;
+  };
+
+  if (shouldHideHeader) {
+    window.addEventListener("scroll", () => {
+      if (!scrollTicking) {
+        window.requestAnimationFrame(updateHeader);
+        scrollTicking = true;
+      }
+    }, { passive: true });
+  }
+})();
+  </script>
 </body>
 </html>

@@ -19,6 +19,7 @@ export const uiDictionaries: Record<UiLocale, UiDictionary> = {
     buildComplete: "Built {posts} posts and {pages} pages.",
     buildPrompt: "Generate the static site into",
     building: "Building...",
+    closeSearch: "Close search",
     createAccount: "Create account",
     createPage: "Create page",
     createPost: "Create post",
@@ -99,6 +100,7 @@ export const uiDictionaries: Record<UiLocale, UiDictionary> = {
     buildComplete: "已构建 {posts} 篇文章和 {pages} 个页面。",
     buildPrompt: "生成静态站点到",
     building: "正在构建...",
+    closeSearch: "关闭搜索",
     createAccount: "创建账号",
     createPage: "创建页面",
     createPost: "创建文章",
@@ -171,6 +173,7 @@ const publicUiKeys = [
   "archive",
   "backToHome",
   "browseArchive",
+  "closeSearch",
   "footerByPrefix",
   "footerBySuffix",
   "featuredPosts",
@@ -281,6 +284,14 @@ function createAutoLanguageScript(): string {
     document.querySelectorAll("[data-i18n]").forEach((element) => {
       const key = element.getAttribute("data-i18n");
       if (key && dictionary[key]) element.textContent = dictionary[key];
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+      const key = element.getAttribute("data-i18n-placeholder");
+      if (key && dictionary[key]) element.setAttribute("placeholder", dictionary[key]);
+    });
+    document.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
+      const key = element.getAttribute("data-i18n-aria-label");
+      if (key && dictionary[key]) element.setAttribute("aria-label", dictionary[key]);
     });
     document.querySelectorAll("[data-i18n-reading-time]").forEach((element) => {
       element.textContent = formatReadingTime(locale, element.getAttribute("data-minutes"));

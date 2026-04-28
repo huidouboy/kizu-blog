@@ -53,6 +53,11 @@ assertIncludes(contents.home, "--theme-accent-color: #7c3aed", files.home);
 assertIncludes(contents.home, 'data-i18n="personalBlogPrefix"', files.home);
 assertIncludes(contents.home, "Static Author", files.home);
 assertIncludes(contents.home, 'data-i18n="search"', files.home);
+assertIncludes(contents.home, "data-search-open", files.home);
+assertIncludes(contents.home, 'role="dialog"', files.home);
+assertIncludes(contents.home, "data-search-input", files.home);
+assertIncludes(contents.home, "Cmd", files.home);
+assertNotIncludes(contents.home, "search-box", files.home);
 assertIncludes(contents.home, "首页", files.home);
 assertIncludes(contents.home, "pages/about/index.html", files.home);
 assertIncludes(contents.home, "tags/markdown/index.html", files.home);
@@ -76,6 +81,10 @@ assertIncludes(contents.tokens, "--radius-lg", files.tokens);
 assertIncludes(contents.tokens, "--shadow-md", files.tokens);
 assertIncludes(contents.global, ".sidebar-false", files.global);
 assertIncludes(contents.global, ".animation-fade", files.global);
+assertIncludes(contents.global, ".search-overlay", files.global);
+assertIncludes(contents.global, ".search-panel", files.global);
+assertIncludes(contents.global, ".site-header.is-hidden", files.global);
+assertIncludes(contents.tokens, "cubic-bezier(0.22, 1, 0.36, 1)", files.tokens);
 
 await validateArchitectureBoundaries();
 await validateContentLoading();
@@ -102,6 +111,12 @@ console.log("Static build validation passed.");
 function assertIncludes(content, expected, filePath) {
   if (!content.includes(expected)) {
     throw new Error(`${filePath} does not include expected content: ${expected}`);
+  }
+}
+
+function assertNotIncludes(content, unexpected, filePath) {
+  if (content.includes(unexpected)) {
+    throw new Error(`${filePath} includes unexpected content: ${unexpected}`);
   }
 }
 
