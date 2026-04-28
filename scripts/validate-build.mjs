@@ -57,6 +57,8 @@ assertIncludes(contents.home, "data-search-open", files.home);
 assertIncludes(contents.home, 'role="dialog"', files.home);
 assertIncludes(contents.home, "data-search-input", files.home);
 assertIncludes(contents.home, "Cmd", files.home);
+assertIncludes(contents.home, "isEditableTarget", files.home);
+assertIncludes(contents.home, "event.target !== input", files.home);
 assertNotIncludes(contents.home, "search-box", files.home);
 assertIncludes(contents.home, "首页", files.home);
 assertIncludes(contents.home, "pages/about/index.html", files.home);

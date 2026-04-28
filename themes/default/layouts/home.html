@@ -114,14 +114,25 @@
 
   openButtons.forEach((button) => button.addEventListener("click", openSearch));
   closeButtons.forEach((button) => button.addEventListener("click", closeSearch));
+  const isEditableTarget = (target) => {
+    if (!(target instanceof Element)) return false;
+    if (target instanceof HTMLElement && target.isContentEditable) return true;
+    return ["input", "textarea", "select"].includes(target.tagName.toLowerCase());
+  };
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !overlay.hidden) {
+      event.preventDefault();
+      closeSearch();
+      return;
+    }
+
     const key = String(event.key).toLowerCase();
     if ((event.metaKey || event.ctrlKey) && key === "k") {
+      if (isEditableTarget(event.target) && event.target !== input) return;
       event.preventDefault();
       openSearch();
       return;
     }
-    if (event.key === "Escape") closeSearch();
   });
 
   const shouldHideHeader = header && body.dataset.contentType === "post";
