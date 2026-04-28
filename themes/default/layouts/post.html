@@ -8,6 +8,7 @@
   <title>{{content.title}} | {{site.title}}</title>
   <link rel="stylesheet" href="../../assets/theme/tokens.css">
   <link rel="stylesheet" href="../../assets/theme/global.css">
+  {{ui.script}}
 </head>
 <body class="layout-{{theme.layout}} sidebar-{{theme.showSidebar}} animation-{{theme.animation}}" data-content-type="{{content.type}}" data-path="{{path}}">
   <header class="site-header" data-slot="header">
@@ -19,25 +20,25 @@
   </header>
   <main class="article-shell" data-slot="main">
     <article class="article">
-      <p class="eyebrow">Post</p>
+      <p class="eyebrow">{{ui.post}}</p>
       <h1>{{content.title}}</h1>
       <div class="article-meta">
-        <time>{{content.date}}</time>
-        <span>{{content.readingTime}}</span>
+        <span>{{ui.publishedOn}} <time>{{content.date}}</time></span>
+        <span>{{ui.readingTime}}: {{content.readingTime}}</span>
       </div>
       <p class="description">{{content.description}}</p>
       <div class="tags">{{content.tags}}</div>
       <div class="article-body">
         {{content.content}}
       </div>
-      <nav class="post-pagination" aria-label="Post navigation">
+      <nav class="post-pagination" aria-label="{{uiText.postNavigation}}">
         {{content.previousPost}}
         {{content.nextPost}}
       </nav>
     </article>
   </main>
   <footer class="site-footer" data-slot="footer">
-    <a href="../../archive/index.html">Browse archive</a>
+    <a href="../../archive/index.html">{{ui.browseArchive}}</a>
   </footer>
 </body>
 </html>

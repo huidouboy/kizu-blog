@@ -8,6 +8,7 @@
   <title>{{content.title}}</title>
   <link rel="stylesheet" href="assets/theme/tokens.css">
   <link rel="stylesheet" href="assets/theme/global.css">
+  {{ui.script}}
 </head>
 <body class="layout-{{theme.layout}} sidebar-{{theme.showSidebar}} animation-{{theme.animation}}" data-content-type="{{content.type}}" data-path="{{path}}">
   <header class="site-header" data-slot="header">
@@ -19,20 +20,26 @@
   </header>
   <main class="site-grid" data-slot="main">
     <section class="content-panel">
-      <p class="eyebrow">Personal blog by {{site.author}}</p>
+      <p class="eyebrow">{{ui.personalBlogPrefix}}{{site.author}}{{ui.personalBlogSuffix}}</p>
       <h1>{{content.title}}</h1>
       <p class="lede">{{content.description}}</p>
       {{content.content}}
     </section>
     <aside class="sidebar" data-slot="sidebar">
       <section>
-        <h2>Pages</h2>
+        <label class="search-box">
+          <span>{{ui.search}}</span>
+          <input type="search" name="q" autocomplete="off">
+        </label>
+      </section>
+      <section>
+        <h2>{{ui.pages}}</h2>
         <ul class="content-list compact-list">
 {{home.pages}}
         </ul>
       </section>
       <section>
-        <h2>Tags</h2>
+        <h2>{{ui.tags}}</h2>
         <div class="tag-cloud">
 {{home.tags}}
         </div>
@@ -40,7 +47,7 @@
     </aside>
   </main>
   <footer class="site-footer" data-slot="footer">
-    <span>{{site.title}} by {{site.author}}</span>
+    <span>{{site.title}} {{site.author}}</span>
   </footer>
 </body>
 </html>

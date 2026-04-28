@@ -4,55 +4,101 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Output: Static HTML](https://img.shields.io/badge/output-static%20HTML-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-ready-3178c6)
+![Version](https://img.shields.io/badge/version-v0.2.0-2f855a)
 
-> A **static-first, extensible blog engine** with Markdown as the source of truth.
-> Built for flexibility, long-term maintainability, and zero-runtime deployment.
+Kizu Blog is a static-first Markdown blog engine. Markdown files stay the source of truth, the build output is portable static HTML, and themes, plugins, and the optional admin panel stay decoupled.
 
-🌐 Demo: https://huidouboy.github.io/kizu-blog
+Current version: **v0.2.0**
 
----
+## Features
 
-## ✨ Why Kizu Blog?
-
-Most blog tools fall into two categories:
-
-- Static generators (Hexo, Hugo) → fast, but rigid
-- CMS systems (WordPress) → flexible, but heavy
-
-**Kizu Blog bridges the gap.**
-
-### Core philosophy:
-
-- **Content-first** → Markdown is always the source of truth
-- **Static-first** → output is plain HTML
-- **Plugin-first** → extend without modifying core
-- **Theme-first** → UI is fully replaceable
-- **Minimal runtime** → no unnecessary dependencies
-
----
-
-## 🚀 Features
-
-- Markdown posts & pages
-- Static HTML output
-- Extensible theme system
-- Hook-based plugin system
-- Optional admin panel (file-based)
-- RSS / sitemap / tag pages / search index
-- Reading time + post navigation
-- Responsive default theme
-- TypeScript monorepo
+- Markdown posts and pages from `content/posts` and `content/pages`
+- Static HTML output in `dist/`
+- Theme system with layouts, styles, settings, and UI slots
+- Hook-based plugin system for Markdown transforms and static artifacts
+- Optional file-backed admin panel for content and config editing
+- RSS, sitemap, search index, archive pages, tag pages, reading time, and post navigation
+- Automatic English / Chinese built-in UI labels without translating user-authored Markdown
+- GitHub Pages friendly output
 - Bilingual documentation
 
----
+## Architecture
 
-## 👤 Author
+```text
+apps/
+  admin/          optional online admin panel
+packages/
+  core/           content, theme, plugin, and rendering primitives
+  cli/            build/dev/preview/deploy commands
+  types/          shared TypeScript contracts
+  theme-default/ default theme package placeholder
+themes/
+  default/        active default theme
+plugins/
+  plugin-seo/
+  plugin-rss/
+  plugin-search/
+```
 
-**kizu（伊甸黎明）**
+`packages/core` does not depend on the admin app or the default theme. The generated static site does not require Node.js or the admin server.
 
----
+## Usage
 
-## 📄 License
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Build packages and the static site:
+
+```bash
+pnpm build
+```
+
+Validate the generated output:
+
+```bash
+pnpm validate:build
+```
+
+Start the optional admin panel:
+
+```bash
+pnpm admin
+```
+
+The admin stores its account data in `data/admin/account.json`, hashes passwords, and writes content/config back to Markdown and JSON files.
+
+## UI Language
+
+Set `config/site.json`:
+
+```json
+{
+  "language": "auto"
+}
+```
+
+`auto` detects the visitor language in the static frontend. Any language starting with `zh` uses Chinese UI labels; all other languages use English. You can force a language with `"zh-CN"` or `"en"`.
+
+This only affects built-in UI labels such as Home, Archive, Tags, Reading time, Previous, and Next. Markdown article and page content is never translated automatically.
+
+## Deployment
+
+GitHub Pages is the primary target. The workflow in `.github/workflows/deploy-pages.yml` installs dependencies, typechecks, builds, validates, and deploys `dist/`.
+
+Cloudflare Pages can use:
+
+- Build command: `pnpm build`
+- Output directory: `dist`
+
+Docker and VPS deployments can serve `dist/` with any static file server.
+
+## Author
+
+kizu (伊甸黎明)
+
+## License
 
 MIT

@@ -3,6 +3,7 @@
   --color-bg: #f7f7f2;
   --color-surface: #ffffff;
   --color-surface-alt: #eef5f1;
+  --color-surface-soft: #fbfcfd;
   --color-text: #1f2933;
   --color-muted: #667085;
   --color-border: #d8dee4;
@@ -28,6 +29,7 @@
 
   --shadow-sm: 0 1px 2px rgb(15 23 42 / 8%);
   --shadow-md: 0 18px 40px rgb(15 23 42 / 10%);
+  --shadow-lg: 0 24px 70px rgb(15 23 42 / 12%);
 
   --measure: 760px;
   --layout-width: 1080px;

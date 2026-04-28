@@ -99,6 +99,8 @@ export interface RenderContext {
   site: TemplateSite;
   content: ContentObject;
   theme: ThemeSettings;
+  ui: Record<string, string>;
+  uiText: Record<string, string>;
   posts: RenderListItem[];
   pages: RenderListItem[];
   path: string;

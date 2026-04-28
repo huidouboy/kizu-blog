@@ -2,7 +2,7 @@
   "title": "Static Blog",
   "description": "A minimal static-first Markdown blog.",
   "author": "Static Author",
-  "language": "en",
+  "language": "auto",
   "baseUrl": "https://example.com",
   "navigation": [
     {

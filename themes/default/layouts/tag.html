@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="{{content.description}}">
   <meta name="author" content="{{site.author}}">
-  <title>{{content.title}} | {{site.title}}</title>
+  <title>{{uiText.tag}}: {{content.tags}} | {{site.title}}</title>
   <link rel="stylesheet" href="../../assets/theme/tokens.css">
   <link rel="stylesheet" href="../../assets/theme/global.css">
+  {{ui.script}}
 </head>
 <body class="layout-{{theme.layout}} sidebar-{{theme.showSidebar}} animation-{{theme.animation}}" data-content-type="{{content.type}}" data-path="{{path}}">
   <header class="site-header" data-slot="header">
@@ -19,14 +20,14 @@
   </header>
   <main class="article-shell" data-slot="main">
     <article class="article">
-      <p class="eyebrow">Tag</p>
-      <h1>{{content.title}}</h1>
-      <p class="description">{{content.description}}</p>
+      <p class="eyebrow">{{ui.tag}}</p>
+      <h1>{{ui.tag}}: {{content.tags}}</h1>
+      <p class="description">{{tag.description}}</p>
       {{content.content}}
     </article>
   </main>
   <footer class="site-footer" data-slot="footer">
-    <a href="../../archive/index.html">Browse archive</a>
+    <a href="../../archive/index.html">{{ui.browseArchive}}</a>
   </footer>
 </body>
 </html>

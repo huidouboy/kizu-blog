@@ -3,12 +3,16 @@ import nodePath from "node:path";
 
 import {
   collectPluginHtml,
+  createStaticUiText,
+  formatReadingTime,
   createSlug,
+  getUiDictionary,
   loadActiveTheme,
   loadPlugins,
   loadPages,
   loadPosts,
   renderTemplate,
+  resolveUiLocale,
   runPluginHook,
   transformMarkdownWithPlugins,
   type LoadedTheme,
@@ -63,6 +67,10 @@ interface TagGroup {
   name: string;
   slug: string;
   posts: PostContent[];
+}
+
+interface RenderNavigationItem extends NavigationItem {
+  labelHtml?: string;
 }
 
 export async function buildSite(options: BuildSiteOptions = {}): Promise<BuildSiteResult> {
@@ -189,16 +197,16 @@ async function renderHomePage(context: BuildRenderContext): Promise<string> {
 
   return renderThemeTemplate(context.theme.layouts.home, context, renderContext, {
     home: {
-      posts: renderPostList(renderContext.posts, ""),
-      pages: renderPageList(renderContext.pages, ""),
-      tags: renderTagCloud(context.tagGroups, ""),
+      posts: renderPostList(renderContext.posts, "", renderContext.ui),
+      pages: renderPageList(renderContext.pages, "", renderContext.ui),
+      tags: renderTagCloud(context.tagGroups, "", renderContext.ui),
     },
   });
 }
 
-function renderTagCloud(tagGroups: TagGroup[], hrefPrefix: string): string {
+function renderTagCloud(tagGroups: TagGroup[], hrefPrefix: string, ui: Record<string, string>): string {
   if (tagGroups.length === 0) {
-    return `<span>No tags yet.</span>`;
+    return `<span>${ui.noTagsYet}</span>`;
   }
 
   return tagGroups
@@ -225,13 +233,14 @@ async function renderTagPage(context: BuildRenderContext, tagGroup: TagGroup): P
     return renderArchivePage(context);
   }
 
-  const content = createTagContent(tagGroup);
+  const content = createTagContent(context, tagGroup);
   const renderContext = createRenderContext(context, content, `/tags/${tagGroup.slug}/`);
 
   return renderThemeTemplate(context.theme.layouts.tag, context, renderContext, {
     tag: {
       name: escapeHtml(tagGroup.name),
-      posts: renderPostList(tagGroup.posts.map(createPostListItem), "../../"),
+      description: `${renderContext.ui.taggedPostsDescriptionPrefix}${escapeHtml(tagGroup.name)}`,
+      posts: renderPostList(tagGroup.posts.map(createPostListItem), "../../", renderContext.ui),
     },
   });
 }
@@ -254,7 +263,7 @@ async function renderArchivePage(context: BuildRenderContext): Promise<string> {
 
   return renderThemeTemplate(context.theme.layouts.archive, context, renderContext, {
     archive: {
-      posts: renderPostList(renderContext.posts, "../"),
+      posts: renderPostList(renderContext.posts, "../", renderContext.ui),
     },
   });
 }
@@ -281,28 +290,38 @@ function createRenderContext(
   content: ContentObject,
   path: string,
 ): RenderContext {
+  const ui = createStaticUiText(context.site.language);
+  const uiText = getUiDictionary(resolveUiLocale(context.site.language));
+
   return {
-    site: createTemplateSite(context.site, path),
+    site: createTemplateSite(context.site, path, ui, uiText),
     content,
     theme: createThemeSettings(context),
+    ui,
+    uiText,
     posts: context.posts.map(createPostListItem),
     pages: context.pages.map(createPageListItem),
     path,
   };
 }
 
-function createTemplateSite(site: SiteConfig, path: string): TemplateSite {
+function createTemplateSite(
+  site: SiteConfig,
+  path: string,
+  ui: Record<string, string>,
+  uiText: Record<string, string>,
+): TemplateSite {
   return {
     title: escapeHtml(site.title),
     description: escapeHtml(site.description ?? ""),
     author: escapeHtml(site.author ?? ""),
     baseUrl: escapeHtml(site.baseUrl ?? site.url ?? ""),
     url: site.url ? escapeHtml(site.url) : undefined,
-    language: escapeHtml(site.language ?? "en"),
+    language: escapeHtml(resolveUiLocale(site.language)),
     postsDir: site.postsDir ? escapeHtml(site.postsDir) : undefined,
     pagesDir: site.pagesDir ? escapeHtml(site.pagesDir) : undefined,
     theme: site.theme ? escapeHtml(site.theme) : undefined,
-    navigation: renderNavigation(site.navigation ?? defaultNavigation(), path),
+    navigation: renderNavigation(site.navigation, path, ui, uiText),
   };
 }
 
@@ -340,6 +359,7 @@ async function createPostContent(
   postIndex: number,
 ): Promise<ContentObject> {
   const path = `/posts/${post.slug}/`;
+  const ui = createStaticUiText(context.site.language);
   const rawBody = await transformMarkdownWithPlugins(
     context.plugins,
     post.rawBody,
@@ -355,9 +375,9 @@ async function createPostContent(
     slug: escapeHtml(post.slug),
     type: "post",
     url: `posts/${encodeRouteSegment(post.slug)}/index.html`,
-    readingTime: calculateReadingTime(rawBody),
-    previousPost: renderAdjacentPostLink(context.posts[postIndex - 1], "Previous", "../../"),
-    nextPost: renderAdjacentPostLink(context.posts[postIndex + 1], "Next", "../../"),
+    readingTime: formatReadingTime(calculateReadingMinutes(rawBody), context.site.language),
+    previousPost: renderAdjacentPostLink(context.posts[postIndex - 1], ui.previous, "../../"),
+    nextPost: renderAdjacentPostLink(context.posts[postIndex + 1], ui.next, "../../"),
   };
 }
 
@@ -381,16 +401,19 @@ async function createPageContent(
     slug: escapeHtml(page.slug),
     type: "page",
     url: `pages/${encodeRouteSegment(page.slug)}/index.html`,
-    readingTime: calculateReadingTime(rawBody),
+    readingTime: formatReadingTime(calculateReadingMinutes(rawBody), context.site.language),
     previousPost: "",
     nextPost: "",
   };
 }
 
 function createArchiveContent(context: BuildRenderContext): ContentObject {
+  const ui = createStaticUiText(context.site.language);
+  const uiText = getUiDictionary(resolveUiLocale(context.site.language));
+
   return {
-    title: "Archive",
-    content: `<ul class="content-list">\n${renderPostList(context.posts.map(createPostListItem), "../")}\n</ul>`,
+    title: uiText.archive,
+    content: `<ul class="content-list">\n${renderPostList(context.posts.map(createPostListItem), "../", ui)}\n</ul>`,
     date: "",
     tags: "",
     description: escapeHtml(context.site.description ?? ""),
@@ -403,13 +426,16 @@ function createArchiveContent(context: BuildRenderContext): ContentObject {
   };
 }
 
-function createTagContent(tagGroup: TagGroup): ContentObject {
+function createTagContent(context: BuildRenderContext, tagGroup: TagGroup): ContentObject {
+  const ui = createStaticUiText(context.site.language);
+  const uiText = getUiDictionary(resolveUiLocale(context.site.language));
+
   return {
-    title: `Tag: ${escapeHtml(tagGroup.name)}`,
-    content: `<ul class="content-list">\n${renderPostList(tagGroup.posts.map(createPostListItem), "../../")}\n</ul>`,
+    title: `${uiText.tag}: ${escapeHtml(tagGroup.name)}`,
+    content: `<ul class="content-list">\n${renderPostList(tagGroup.posts.map(createPostListItem), "../../", ui)}\n</ul>`,
     date: "",
     tags: escapeHtml(tagGroup.name),
-    description: `Posts tagged ${escapeHtml(tagGroup.name)}`,
+    description: `${uiText.taggedPostsDescriptionPrefix}${escapeHtml(tagGroup.name)}`,
     slug: escapeHtml(tagGroup.slug),
     type: "tag",
     url: `tags/${encodeRouteSegment(tagGroup.slug)}/index.html`,
@@ -442,17 +468,20 @@ function createPageListItem(page: PageContent): RenderListItem {
 }
 
 function renderHomeContent(context: BuildRenderContext): string {
+  const ui = createStaticUiText(context.site.language);
+
   return `<section>
-  <h2>Posts</h2>
+  <h2>${ui.posts}</h2>
   <ul class="content-list">
-${renderPostList(context.posts.map(createPostListItem), "")}
+${renderPostList(context.posts.map(createPostListItem), "", ui)}
   </ul>
+  <p><a class="view-all" href="archive/index.html">${ui.viewAllPosts}</a></p>
 </section>`;
 }
 
-function renderPostList(posts: RenderListItem[], hrefPrefix: string): string {
+function renderPostList(posts: RenderListItem[], hrefPrefix: string, ui: Record<string, string>): string {
   if (posts.length === 0) {
-    return `<li>No posts yet.</li>`;
+    return `<li>${ui.noPostsYet}</li>`;
   }
 
   return posts
@@ -469,9 +498,9 @@ ${summary}</li>`;
     .join("\n");
 }
 
-function renderPageList(pages: RenderListItem[], hrefPrefix: string): string {
+function renderPageList(pages: RenderListItem[], hrefPrefix: string, ui: Record<string, string>): string {
   if (pages.length === 0) {
-    return `<li>No pages yet.</li>`;
+    return `<li>${ui.noPagesYet}</li>`;
   }
 
   return pages
@@ -533,43 +562,72 @@ function renderAdjacentPostLink(
     return "";
   }
 
-  return `<a href="${escapeAttribute(`${hrefPrefix}posts/${encodeRouteSegment(post.slug)}/index.html`)}"><span>${escapeHtml(label)}</span>${escapeHtml(post.frontmatter.title)}</a>`;
+  return `<a href="${escapeAttribute(`${hrefPrefix}posts/${encodeRouteSegment(post.slug)}/index.html`)}"><span>${label}</span>${escapeHtml(post.frontmatter.title)}</a>`;
 }
 
-function calculateReadingTime(markdown: string): string {
+function calculateReadingMinutes(markdown: string): number {
   const text = markdown
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/[#>*_`[\]()-]/g, " ")
     .trim();
   const words = text ? text.split(/\s+/).length : 0;
-  const minutes = Math.max(1, Math.ceil(words / 220));
 
-  return `${minutes} min read`;
+  return Math.max(1, Math.ceil(words / 220));
 }
 
-function renderNavigation(items: NavigationItem[], currentPath: string): string {
+function renderNavigation(
+  configuredItems: NavigationItem[] | undefined,
+  currentPath: string,
+  ui: Record<string, string>,
+  uiText: Record<string, string>,
+): string {
+  const items = configuredItems?.length
+    ? configuredItems.map((item): RenderNavigationItem => ({
+        ...item,
+        labelHtml: builtInNavigationLabel(item, ui),
+      }))
+    : defaultNavigation(ui);
+
   if (items.length === 0) {
     return "";
   }
 
-  return `<nav class="site-nav" aria-label="Primary navigation">
+  return `<nav class="site-nav" aria-label="${escapeAttribute(uiText.primaryNavigation)}">
 ${items
   .map((item) => {
     const href = routeToRelativeHref(item.url, currentPath);
     const isCurrent = normalizeRoutePath(item.url) === normalizeRoutePath(currentPath);
     const ariaCurrent = isCurrent ? ` aria-current="page"` : "";
+    const label = item.labelHtml ?? escapeHtml(item.label);
 
-    return `  <a href="${escapeAttribute(href)}"${ariaCurrent}>${escapeHtml(item.label)}</a>`;
+    return `  <a href="${escapeAttribute(href)}"${ariaCurrent}>${label}</a>`;
   })
   .join("\n")}
 </nav>`;
 }
 
-function defaultNavigation(): NavigationItem[] {
+function defaultNavigation(ui: Record<string, string>): RenderNavigationItem[] {
   return [
-    { label: "Home", url: "/" },
-    { label: "Archive", url: "/archive/" },
+    { label: "Home", labelHtml: ui.home, url: "/" },
+    { label: "Archive", labelHtml: ui.archive, url: "/archive/" },
   ];
+}
+
+function builtInNavigationLabel(
+  item: NavigationItem,
+  ui: Record<string, string>,
+): string | undefined {
+  const normalizedUrl = normalizeRoutePath(item.url);
+
+  if (normalizedUrl === "/") {
+    return ui.home;
+  }
+
+  if (normalizedUrl === "/archive/") {
+    return ui.archive;
+  }
+
+  return undefined;
 }
 
 function routeToRelativeHref(targetUrl: string, currentPath: string): string {

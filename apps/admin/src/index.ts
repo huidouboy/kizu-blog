@@ -15,10 +15,13 @@ import { fileURLToPath } from "node:url";
 
 import { buildSite } from "@static-blog/cli/build";
 import {
+  getUiDictionary,
   loadPages,
   loadPosts,
   loadThemeManifest,
   parseMarkdown,
+  resolveUiLocale,
+  type UiLocale,
 } from "@static-blog/core";
 import type { PageContent, PostContent } from "@static-blog/core";
 
@@ -67,7 +70,7 @@ export function startAdminServer(options: StartAdminServerOptions = {}): Server 
   const server = createServer((request, response) => {
     handleRequest(request, response).catch((error: unknown) => {
       sendJson(response, error instanceof AdminInputError ? 400 : 500, {
-        error: error instanceof Error ? error.message : "Unexpected server error",
+        error: translateAdminError(error, resolveAdminLocale(request)),
       });
     });
   });
@@ -94,7 +97,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     return;
   }
 
-  sendHtml(response, 200, renderAdminShell());
+  sendHtml(response, 200, renderAdminShell(resolveAdminLocale(request)));
 }
 
 async function handleApiRequest(
@@ -103,6 +106,9 @@ async function handleApiRequest(
   method: string,
   url: URL,
 ): Promise<void> {
+  const locale = resolveAdminLocale(request);
+  const ui = getUiDictionary(locale);
+
   if (method === "GET" && url.pathname === "/api/status") {
     const hasAccount = await fileExists(accountPath);
     const session = getSession(request);
@@ -111,13 +117,14 @@ async function handleApiRequest(
       hasAccount,
       authenticated: Boolean(session),
       username: session?.username ?? null,
+      locale,
     });
     return;
   }
 
   if (method === "POST" && url.pathname === "/api/setup") {
     if (await fileExists(accountPath)) {
-      sendJson(response, 409, { error: "Admin account already exists." });
+      sendJson(response, 409, { error: ui.adminAccountAlreadyExists });
       return;
     }
 
@@ -126,11 +133,12 @@ async function handleApiRequest(
     const password = requireString(body.password, "password");
 
     if (password.length < 8) {
-      sendJson(response, 400, { error: "Password must be at least 8 characters." });
+      sendJson(response, 400, { error: ui.passwordMin });
       return;
     }
 
     await writeAccount(username, password);
+    await ensureInitialSampleContent(locale);
     const token = createSession(username);
 
     setSessionCookie(response, token);
@@ -145,7 +153,7 @@ async function handleApiRequest(
     const valid = await verifyAccount(username, password);
 
     if (!valid) {
-      sendJson(response, 401, { error: "Invalid username or password." });
+      sendJson(response, 401, { error: ui.invalidAuth });
       return;
     }
 
@@ -171,16 +179,16 @@ async function handleApiRequest(
   const hasAccount = await fileExists(accountPath);
 
   if (!hasAccount) {
-    sendJson(response, 409, { error: "Admin account has not been initialized." });
+    sendJson(response, 409, { error: ui.adminAccountNotInitialized });
     return;
   }
 
   if (!getSession(request)) {
-    sendJson(response, 401, { error: "Authentication required." });
+    sendJson(response, 401, { error: ui.authenticationRequired });
     return;
   }
 
-  await handleAuthenticatedApiRequest(request, response, method, url);
+  await handleAuthenticatedApiRequest(request, response, method, url, locale);
 }
 
 async function handleAuthenticatedApiRequest(
@@ -188,7 +196,10 @@ async function handleAuthenticatedApiRequest(
   response: ServerResponse,
   method: string,
   url: URL,
+  locale: UiLocale,
 ): Promise<void> {
+  const ui = getUiDictionary(locale);
+
   if (method === "GET" && url.pathname === "/api/posts") {
     const posts = await loadPosts({ contentDir: contentDir(), includeDrafts: true });
 
@@ -338,7 +349,7 @@ async function handleAuthenticatedApiRequest(
     return;
   }
 
-  sendJson(response, 404, { error: "Not found." });
+  sendJson(response, 404, { error: ui.notFound });
 }
 
 async function writeAccount(username: string, password: string): Promise<void> {
@@ -355,6 +366,97 @@ async function writeAccount(username: string, password: string): Promise<void> {
     iterations,
     digest,
   });
+}
+
+async function ensureInitialSampleContent(locale: UiLocale): Promise<void> {
+  await ensureInitialSampleContentForRoot(rootDir, locale);
+}
+
+export async function ensureInitialSampleContentForRoot(
+  projectRootDir: string,
+  locale: UiLocale,
+): Promise<void> {
+  const safeRootDir = nodePath.resolve(projectRootDir);
+  const baseContentDir = nodePath.join(safeRootDir, "content");
+  const postsDir = nodePath.join(baseContentDir, "posts");
+  const pagesDir = nodePath.join(baseContentDir, "pages");
+
+  assertInsideRoot(safeRootDir, postsDir);
+  assertInsideRoot(safeRootDir, pagesDir);
+
+  const postFiles = await listMarkdownFileNames(postsDir);
+  const pageFiles = await listMarkdownFileNames(pagesDir);
+  const existingFiles = [...postFiles, ...pageFiles];
+  const existingPostsAreGenerated = await allFilesAreGeneratedSamples(postsDir, postFiles);
+  const existingPagesAreGenerated = await allFilesAreGeneratedSamples(pagesDir, pageFiles);
+
+  if (existingFiles.length > 0 && !(existingPostsAreGenerated && existingPagesAreGenerated)) {
+    return;
+  }
+
+  await mkdir(postsDir, { recursive: true });
+  await mkdir(pagesDir, { recursive: true });
+
+  const samples = locale === "zh-CN" ? createChineseSamples() : createEnglishSamples();
+
+  await writeGeneratedSample(nodePath.join(postsDir, "hello-world.md"), samples.post);
+  await writeGeneratedSample(nodePath.join(pagesDir, "about.md"), samples.page);
+}
+
+async function listMarkdownFileNames(directory: string): Promise<string[]> {
+  const entries = await safeReadDir(directory);
+
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".md"))
+    .map((entry) => entry.name);
+}
+
+async function allFilesAreGeneratedSamples(directory: string, fileNames: string[]): Promise<boolean> {
+  if (fileNames.length === 0) {
+    return true;
+  }
+
+  const knownSampleNames = new Set(["hello-world.md", "about.md"]);
+
+  for (const fileName of fileNames) {
+    if (!knownSampleNames.has(fileName)) {
+      return false;
+    }
+
+    const source = await readFile(nodePath.join(directory, fileName), "utf8");
+
+    if (!source.includes("generated: static-blog-sample")) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function writeGeneratedSample(filePath: string, source: string): Promise<void> {
+  if (await fileExists(filePath)) {
+    const existingSource = await readFile(filePath, "utf8");
+
+    if (!existingSource.includes("generated: static-blog-sample")) {
+      return;
+    }
+  }
+
+  await writeFile(filePath, source, "utf8");
+}
+
+function createEnglishSamples(): { post: string; page: string } {
+  return {
+    post: `---\ntitle: Hello World\ndate: 2026-04-28\ntags:\n  - markdown\n  - release\ndraft: false\ndescription: A first sample post for your static-first blog.\nslug: hello-world\ngenerated: static-blog-sample\n---\n# Hello World\n\nThis sample post shows the default post page, archive listing, tag page, and reading time.\n\nEdit or delete it from the admin panel when you are ready to publish your own writing.\n`,
+    page: `---\ntitle: About\ndescription: A sample about page.\nslug: about\ngenerated: static-blog-sample\n---\n# About\n\nThis is a sample page for your new static-first blog.\n\nReplace it with your own introduction when you are ready.\n`,
+  };
+}
+
+function createChineseSamples(): { post: string; page: string } {
+  return {
+    post: `---\ntitle: 你好，世界\ndate: 2026-04-28\ntags:\n  - markdown\n  - 发布\ndraft: false\ndescription: 这是静态优先博客的第一篇示例文章。\nslug: hello-world\ngenerated: static-blog-sample\n---\n# 你好，世界\n\n这篇示例文章会展示默认文章页、归档、标签页和阅读时间。\n\n准备好发布自己的内容后，你可以在后台编辑或删除它。\n`,
+    page: `---\ntitle: 关于\ndescription: 一个示例关于页面。\nslug: about\ngenerated: static-blog-sample\n---\n# 关于\n\n这是你的静态优先博客的示例页面。\n\n你可以把这里替换成自己的介绍。\n`,
+  };
 }
 
 async function verifyAccount(username: string, password: string): Promise<boolean> {
@@ -427,6 +529,57 @@ function setSessionCookie(response: ServerResponse, token: string): void {
 
 function clearSessionCookie(response: ServerResponse): void {
   response.setHeader("Set-Cookie", "admin_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+}
+
+function resolveAdminLocale(request: IncomingMessage): UiLocale {
+  const acceptLanguage = Array.isArray(request.headers["accept-language"])
+    ? request.headers["accept-language"].join(",")
+    : request.headers["accept-language"] ?? "";
+
+  return resolveUiLocale("auto", acceptLanguage);
+}
+
+function translateAdminError(error: unknown, locale: UiLocale): string {
+  const ui = getUiDictionary(locale);
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message === "Unexpected server error") {
+    return ui.unexpectedServerError;
+  }
+
+  if (message.includes("Password must be at least")) {
+    return ui.passwordMin;
+  }
+
+  if (message.includes("Invalid username or password")) {
+    return ui.invalidAuth;
+  }
+
+  if (
+    message.includes("Slug cannot be empty") ||
+    message.includes("Invalid slug") ||
+    message.includes("Reserved slug")
+  ) {
+    return ui.invalidSlug;
+  }
+
+  if (message.includes("Authentication required")) {
+    return ui.authenticationRequired;
+  }
+
+  if (message.includes("Admin account already exists")) {
+    return ui.adminAccountAlreadyExists;
+  }
+
+  if (message.includes("Admin account has not been initialized")) {
+    return ui.adminAccountNotInitialized;
+  }
+
+  if (message.includes("not found") || message.includes("Not found")) {
+    return ui.notFound;
+  }
+
+  return message;
 }
 
 function getCookie(request: IncomingMessage, key: string): string | undefined {
@@ -1013,13 +1166,16 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function renderAdminShell(): string {
+function renderAdminShell(locale: UiLocale): string {
+  const ui = getUiDictionary(locale);
+  const uiJson = JSON.stringify(ui).replaceAll("</", "<\\/");
+
   return `<!doctype html>
-<html lang="en">
+<html lang="${locale}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Static Blog Admin</title>
+  <title>${escapeHtml(ui.adminTitle)}</title>
   <style>
     :root { font-family: Arial, sans-serif; color: #17202a; background: #f5f7f8; }
     * { box-sizing: border-box; }
@@ -1068,8 +1224,13 @@ const state = {
   themes: null,
   plugins: null
 };
+const ui = ${uiJson};
 
 const app = document.getElementById("app");
+
+function t(key) {
+  return ui[key] || key;
+}
 
 init();
 
@@ -1094,12 +1255,12 @@ async function api(path, options = {}) {
     body: options.body ? JSON.stringify(options.body) : undefined
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Request failed");
+  if (!response.ok) throw new Error(data.error || t("requestFailed"));
   return data;
 }
 
 function renderSetup() {
-  app.innerHTML = authCard("Initialize admin account", "Create account", "setup");
+  app.innerHTML = authCard(t("initializeAdmin"), t("createAccount"), "setup");
   document.getElementById("auth-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     await submitAuth("/api/setup");
@@ -1107,7 +1268,7 @@ function renderSetup() {
 }
 
 function renderLogin() {
-  app.innerHTML = authCard("Admin login", "Login", "login");
+  app.innerHTML = authCard(t("adminLogin"), t("login"), "login");
   document.getElementById("auth-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     await submitAuth("/api/login");
@@ -1118,8 +1279,8 @@ function authCard(title, buttonLabel, mode) {
   return '<main><section class="card" style="max-width:420px;margin:10vh auto;">' +
     '<h1>' + title + '</h1>' +
     '<form id="auth-form" class="list">' +
-    '<label>Username<input name="username" autocomplete="username" value="admin"></label>' +
-    '<label>Password<input name="password" type="password" autocomplete="' + (mode === "setup" ? "new-password" : "current-password") + '"></label>' +
+    '<label>' + t("username") + '<input name="username" autocomplete="username" value="admin"></label>' +
+    '<label>' + t("password") + '<input name="password" type="password" autocomplete="' + (mode === "setup" ? "new-password" : "current-password") + '"></label>' +
     '<button>' + buttonLabel + '</button><p id="message" class="error"></p></form></section></main>';
 }
 
@@ -1154,10 +1315,10 @@ async function loadAdminData() {
 }
 
 function renderAdmin() {
-  app.innerHTML = '<div class="shell"><aside><h1>Static Blog Admin</h1><nav>' +
-    navButton("posts", "Posts") + navButton("pages", "Pages") + navButton("site", "Site config") +
-    navButton("theme", "Theme") + navButton("plugins", "Plugins") + navButton("build", "Build") +
-    '</nav><hr><button class="secondary" id="logout">Logout</button></aside><main id="main"></main></div>';
+  app.innerHTML = '<div class="shell"><aside><h1>' + t("adminTitle") + '</h1><nav>' +
+    navButton("posts", t("posts")) + navButton("pages", t("pages")) + navButton("site", t("siteConfig")) +
+    navButton("theme", t("theme")) + navButton("plugins", t("plugins")) + navButton("build", t("build")) +
+    '</nav><hr><button class="secondary" id="logout">' + t("logout") + '</button></aside><main id="main"></main></div>';
   document.querySelectorAll("[data-section]").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeSection = button.dataset.section;
@@ -1178,7 +1339,7 @@ function navButton(section, label) {
 function renderSection() {
   if (state.activeSection === "posts") renderPosts();
   if (state.activeSection === "pages") renderPages();
-  if (state.activeSection === "site") renderJsonConfig("Site config", "/api/config/site", state.site);
+  if (state.activeSection === "site") renderJsonConfig(t("siteConfig"), "/api/config/site", state.site);
   if (state.activeSection === "theme") renderTheme();
   if (state.activeSection === "plugins") renderPlugins();
   if (state.activeSection === "build") renderBuild();
@@ -1186,8 +1347,8 @@ function renderSection() {
 
 function renderPosts() {
   const main = document.getElementById("main");
-  main.innerHTML = '<div class="grid"><section class="card"><div class="row"><h2>Posts</h2><button id="new-post">New</button></div><div class="list">' +
-    state.posts.map((post) => '<button data-post="' + esc(post.slug) + '">' + esc(post.title) + '<br><span class="muted">' + esc(post.date) + (post.draft ? " - draft" : "") + '</span></button>').join("") +
+  main.innerHTML = '<div class="grid"><section class="card"><div class="row"><h2>' + t("posts") + '</h2><button id="new-post">' + t("new") + '</button></div><div class="list">' +
+    (state.posts.length ? state.posts.map((post) => '<button data-post="' + esc(post.slug) + '">' + esc(post.title) + '<br><span class="muted">' + esc(post.date) + (post.draft ? " - " + t("draft") : "") + '</span></button>').join("") : '<p class="muted">' + t("noPostsYet") + '</p>') +
     '</div></section><section class="card" id="editor"></section></div>';
   document.getElementById("new-post").addEventListener("click", () => renderPostEditor(null));
   document.querySelectorAll("[data-post]").forEach((button) => {
@@ -1200,16 +1361,16 @@ function renderPostEditor(post) {
   state.selectedPost = post;
   const editor = document.getElementById("editor");
   const value = post || { title: "", slug: "", date: new Date().toISOString().slice(0, 10), tags: [], draft: false, description: "", body: "" };
-  editor.innerHTML = '<h2>' + (post ? "Edit post" : "Create post") + '</h2><form id="content-form" class="list">' +
-    '<div class="form-grid"><label>Title<input name="title" value="' + esc(value.title || "") + '"></label>' +
-    '<label>Slug<input name="slug" value="' + esc(value.slug || "") + '"></label>' +
-    '<label>Date<input name="date" type="date" value="' + esc(value.date || "") + '"></label>' +
-    '<label>Tags<input name="tags" value="' + esc((value.tags || []).join(", ")) + '"></label></div>' +
-    '<label>Description<input name="description" value="' + esc(value.description || "") + '"></label>' +
-    '<label><span><input name="draft" type="checkbox" style="width:auto" ' + (value.draft ? "checked" : "") + '> Draft</span></label>' +
-    '<label>Markdown<textarea name="body">' + esc(value.body || "") + '</textarea></label>' +
-    '<div class="row"><button>Save</button><button type="button" class="secondary" id="preview">Preview</button>' +
-    (post ? '<button type="button" class="danger" id="delete">Delete</button>' : "") + '</div><p id="message"></p><div id="preview-box" class="preview hidden"></div></form>';
+  editor.innerHTML = '<h2>' + (post ? t("editPost") : t("createPost")) + '</h2><form id="content-form" class="list">' +
+    '<div class="form-grid"><label>' + t("title") + '<input name="title" value="' + esc(value.title || "") + '"></label>' +
+    '<label>' + t("slug") + '<input name="slug" value="' + esc(value.slug || "") + '"></label>' +
+    '<label>' + t("date") + '<input name="date" type="date" value="' + esc(value.date || "") + '"></label>' +
+    '<label>' + t("tags") + '<input name="tags" value="' + esc((value.tags || []).join(", ")) + '"></label></div>' +
+    '<label>' + t("description") + '<input name="description" value="' + esc(value.description || "") + '"></label>' +
+    '<label><span><input name="draft" type="checkbox" style="width:auto" ' + (value.draft ? "checked" : "") + '> ' + t("draft") + '</span></label>' +
+    '<label>' + t("markdown") + '<textarea name="body">' + esc(value.body || "") + '</textarea></label>' +
+    '<div class="row"><button>' + t("save") + '</button><button type="button" class="secondary" id="preview">' + t("preview") + '</button>' +
+    (post ? '<button type="button" class="danger" id="delete">' + t("delete") + '</button>' : "") + '</div><p id="message"></p><div id="preview-box" class="preview hidden"></div></form>';
   document.getElementById("content-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     await savePost(post);
@@ -1229,7 +1390,7 @@ async function savePost(existing) {
 }
 
 async function deletePost(slug) {
-  if (!confirm("Delete this post? It will be moved to data/admin/trash.")) return;
+  if (!confirm(t("deletePostConfirm"))) return;
   await api("/api/posts/" + encodeURIComponent(slug), { method: "DELETE", body: {} });
   await loadAdminData();
   state.selectedPost = null;
@@ -1238,8 +1399,8 @@ async function deletePost(slug) {
 
 function renderPages() {
   const main = document.getElementById("main");
-  main.innerHTML = '<div class="grid"><section class="card"><div class="row"><h2>Pages</h2><button id="new-page">New</button></div><div class="list">' +
-    state.pages.map((page) => '<button data-page="' + esc(page.slug) + '">' + esc(page.title) + (page.draft ? '<br><span class="muted">draft</span>' : "") + '</button>').join("") +
+  main.innerHTML = '<div class="grid"><section class="card"><div class="row"><h2>' + t("pages") + '</h2><button id="new-page">' + t("new") + '</button></div><div class="list">' +
+    (state.pages.length ? state.pages.map((page) => '<button data-page="' + esc(page.slug) + '">' + esc(page.title) + (page.draft ? '<br><span class="muted">' + t("draft") + '</span>' : "") + '</button>').join("") : '<p class="muted">' + t("noPagesYet") + '</p>') +
     '</div></section><section class="card" id="editor"></section></div>';
   document.getElementById("new-page").addEventListener("click", () => renderPageEditor(null));
   document.querySelectorAll("[data-page]").forEach((button) => {
@@ -1252,14 +1413,14 @@ function renderPageEditor(page) {
   state.selectedPage = page;
   const editor = document.getElementById("editor");
   const value = page || { title: "", slug: "", draft: false, description: "", body: "" };
-  editor.innerHTML = '<h2>' + (page ? "Edit page" : "Create page") + '</h2><form id="content-form" class="list">' +
-    '<div class="form-grid"><label>Title<input name="title" value="' + esc(value.title || "") + '"></label>' +
-    '<label>Slug<input name="slug" value="' + esc(value.slug || "") + '"></label></div>' +
-    '<label>Description<input name="description" value="' + esc(value.description || "") + '"></label>' +
-    '<label><span><input name="draft" type="checkbox" style="width:auto" ' + (value.draft ? "checked" : "") + '> Draft</span></label>' +
-    '<label>Markdown<textarea name="body">' + esc(value.body || "") + '</textarea></label>' +
-    '<div class="row"><button>Save</button><button type="button" class="secondary" id="preview">Preview</button>' +
-    (page ? '<button type="button" class="danger" id="delete">Delete</button>' : "") + '</div><p id="message"></p><div id="preview-box" class="preview hidden"></div></form>';
+  editor.innerHTML = '<h2>' + (page ? t("editPage") : t("createPage")) + '</h2><form id="content-form" class="list">' +
+    '<div class="form-grid"><label>' + t("title") + '<input name="title" value="' + esc(value.title || "") + '"></label>' +
+    '<label>' + t("slug") + '<input name="slug" value="' + esc(value.slug || "") + '"></label></div>' +
+    '<label>' + t("description") + '<input name="description" value="' + esc(value.description || "") + '"></label>' +
+    '<label><span><input name="draft" type="checkbox" style="width:auto" ' + (value.draft ? "checked" : "") + '> ' + t("draft") + '</span></label>' +
+    '<label>' + t("markdown") + '<textarea name="body">' + esc(value.body || "") + '</textarea></label>' +
+    '<div class="row"><button>' + t("save") + '</button><button type="button" class="secondary" id="preview">' + t("preview") + '</button>' +
+    (page ? '<button type="button" class="danger" id="delete">' + t("delete") + '</button>' : "") + '</div><p id="message"></p><div id="preview-box" class="preview hidden"></div></form>';
   document.getElementById("content-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     await savePage(page);
@@ -1279,7 +1440,7 @@ async function savePage(existing) {
 }
 
 async function deletePage(slug) {
-  if (!confirm("Delete this page? It will be moved to data/admin/trash.")) return;
+  if (!confirm(t("deletePageConfirm"))) return;
   await api("/api/pages/" + encodeURIComponent(slug), { method: "DELETE", body: {} });
   await loadAdminData();
   state.selectedPage = null;
@@ -1310,15 +1471,15 @@ async function previewMarkdown() {
 function renderJsonConfig(title, path, value) {
   const main = document.getElementById("main");
   main.innerHTML = '<section class="card"><h2>' + title + '</h2><form id="json-form" class="list">' +
-    '<label>JSON<textarea name="json">' + esc(JSON.stringify(value, null, 2)) + '</textarea></label>' +
-    '<button>Save</button><p id="message"></p></form></section>';
+    '<label>' + t("json") + '<textarea name="json">' + esc(JSON.stringify(value, null, 2)) + '</textarea></label>' +
+    '<button>' + t("save") + '</button><p id="message"></p></form></section>';
   document.getElementById("json-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
       const json = JSON.parse(new FormData(event.currentTarget).get("json"));
       await api(path, { method: "PUT", body: json });
       await loadAdminData();
-      setMessage("Saved.", true);
+      setMessage(t("saved"), true);
     } catch (error) {
       setMessage(error.message, false);
     }
@@ -1330,10 +1491,10 @@ function renderTheme() {
   const manifest = state.themes.activeManifest;
   const settings = active.settings || {};
   const main = document.getElementById("main");
-  main.innerHTML = '<section class="card"><h2>Theme</h2><form id="theme-form" class="list">' +
-    '<label>Active theme<select name="theme">' + state.themes.themes.map((theme) => '<option value="' + esc(theme.name) + '" ' + (theme.name === active.theme ? "selected" : "") + '>' + esc(theme.name) + '</option>').join("") + '</select></label>' +
+  main.innerHTML = '<section class="card"><h2>' + t("theme") + '</h2><form id="theme-form" class="list">' +
+    '<label>' + t("activeTheme") + '<select name="theme">' + state.themes.themes.map((theme) => '<option value="' + esc(theme.name) + '" ' + (theme.name === active.theme ? "selected" : "") + '>' + esc(theme.name) + '</option>').join("") + '</select></label>' +
     '<div id="theme-settings">' + renderThemeSettings(manifest, settings) + '</div>' +
-    '<button>Save theme</button><p id="message"></p></form></section>';
+    '<button>' + t("saveTheme") + '</button><p id="message"></p></form></section>';
   const themeSelect = document.querySelector('select[name="theme"]');
   themeSelect.addEventListener("change", () => {
     const nextManifest = state.themes.themes.find((theme) => theme.name === themeSelect.value);
@@ -1352,12 +1513,12 @@ function renderTheme() {
       body: { theme: form.get("theme"), settings: nextSettings }
     });
     await loadAdminData();
-    setMessage("Theme saved.", true);
+    setMessage(t("themeSaved"), true);
   });
 }
 
 function renderThemeSettings(manifest, settings) {
-  if (!manifest || !manifest.settings) return '<p class="muted">No configurable settings.</p>';
+  if (!manifest || !manifest.settings) return '<p class="muted">' + t("noConfigurableSettings") + '</p>';
   return Object.entries(manifest.settings).map(([key, definition]) => {
     const value = settings[key] ?? definition.default ?? "";
     if (definition.type === "select") {
@@ -1370,26 +1531,26 @@ function renderThemeSettings(manifest, settings) {
 function renderPlugins() {
   const enabled = new Set((state.plugins.active && state.plugins.active.enabled) || []);
   const main = document.getElementById("main");
-  main.innerHTML = '<section class="card"><h2>Plugins</h2><form id="plugins-form" class="list">' +
+  main.innerHTML = '<section class="card"><h2>' + t("plugins") + '</h2><form id="plugins-form" class="list">' +
     state.plugins.plugins.map((plugin) => '<label><span><input type="checkbox" name="plugins" value="' + esc(plugin.name) + '" style="width:auto" ' + (enabled.has(plugin.name) ? "checked" : "") + '> ' + esc(plugin.name) + ' <span class="muted">' + esc(plugin.version || "") + '</span></span></label>').join("") +
-    '<button>Save plugins</button><p id="message"></p></form></section>';
+    '<button>' + t("savePlugins") + '</button><p id="message"></p></form></section>';
   document.getElementById("plugins-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const selected = Array.from(document.querySelectorAll("input[name=plugins]:checked")).map((input) => input.value);
     await api("/api/config/plugins", { method: "PUT", body: { enabled: selected } });
     await loadAdminData();
-    setMessage("Plugins saved.", true);
+    setMessage(t("pluginSaved"), true);
   });
 }
 
 function renderBuild() {
   const main = document.getElementById("main");
-  main.innerHTML = '<section class="card"><h2>Build</h2><p>Generate the static site into <code>dist/</code>.</p><button id="build">Trigger build</button><p id="message"></p></section>';
+  main.innerHTML = '<section class="card"><h2>' + t("build") + '</h2><p>' + t("buildPrompt") + ' <code>dist/</code>.</p><button id="build">' + t("triggerBuild") + '</button><p id="message"></p></section>';
   document.getElementById("build").addEventListener("click", async () => {
-    setMessage("Building...", true);
+    setMessage(t("building"), true);
     try {
       const result = await api("/api/build", { method: "POST", body: {} });
-      setMessage("Built " + result.result.posts + " posts and " + result.result.pages + " pages.", true);
+      setMessage(t("buildComplete").replace("{posts}", result.result.posts).replace("{pages}", result.result.pages), true);
     } catch (error) {
       setMessage(error.message, false);
     }
