@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="{{site.language}}" style="--theme-accent-color: {{theme.accentColor}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{site.description}}">
+  <meta name="author" content="{{site.author}}">
+  <title>{{content.title}}</title>
+  <link rel="stylesheet" href="assets/theme/tokens.css">
+  <link rel="stylesheet" href="assets/theme/global.css">
+</head>
+<body class="layout-{{theme.layout}} sidebar-{{theme.showSidebar}} animation-{{theme.animation}}" data-content-type="{{content.type}}" data-path="{{path}}">
+  <header class="site-header" data-slot="header">
+    <div>
+      <a class="site-title" href="index.html">{{site.title}}</a>
+      <p>{{site.description}}</p>
+    </div>
+    {{site.navigation}}
+  </header>
+  <main class="site-grid" data-slot="main">
+    <section class="content-panel">
+      <p class="eyebrow">Personal blog by {{site.author}}</p>
+      <h1>{{content.title}}</h1>
+      <p class="lede">{{content.description}}</p>
+      {{content.content}}
+    </section>
+    <aside class="sidebar" data-slot="sidebar">
+      <section>
+        <h2>Pages</h2>
+        <ul class="content-list compact-list">
+{{home.pages}}
+        </ul>
+      </section>
+      <section>
+        <h2>Tags</h2>
+        <div class="tag-cloud">
+{{home.tags}}
+        </div>
+      </section>
+    </aside>
+  </main>
+  <footer class="site-footer" data-slot="footer">
+    <span>{{site.title}} by {{site.author}}</span>
+  </footer>
+</body>
+</html>

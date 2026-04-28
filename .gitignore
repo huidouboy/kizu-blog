@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.static-blog-cache/
+.admin/
+data/admin/
+*.tsbuildinfo

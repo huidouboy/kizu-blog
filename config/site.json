@@ -1,0 +1,21 @@
+{
+  "title": "Static Blog",
+  "description": "A minimal static-first Markdown blog.",
+  "author": "Static Author",
+  "language": "en",
+  "baseUrl": "https://example.com",
+  "navigation": [
+    {
+      "label": "Home",
+      "url": "/"
+    },
+    {
+      "label": "Archive",
+      "url": "/archive/"
+    },
+    {
+      "label": "About",
+      "url": "/pages/about/"
+    }
+  ]
+}

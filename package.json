@@ -1,0 +1,32 @@
+{
+  "name": "static-first-blog-engine",
+  "version": "0.1.0",
+  "description": "A static-first Markdown blog engine with themes, plugins, and an optional file-backed admin panel.",
+  "private": true,
+  "type": "module",
+  "author": "kizu (伊甸黎明)",
+  "license": "MIT",
+  "keywords": [
+    "blog",
+    "markdown",
+    "static-site",
+    "typescript",
+    "themes",
+    "plugins"
+  ],
+  "packageManager": "pnpm@10.8.0",
+  "scripts": {
+    "build": "pnpm run build:packages && node packages/cli/dist/index.js build",
+    "build:packages": "pnpm -r build",
+    "dev": "pnpm run build:packages && node packages/cli/dist/index.js dev",
+    "preview": "pnpm run build:packages && node packages/cli/dist/index.js preview",
+    "deploy": "pnpm run build:packages && node packages/cli/dist/index.js deploy",
+    "admin": "pnpm run build:packages && node apps/admin/dist/index.js",
+    "typecheck": "pnpm run build:packages && pnpm -r typecheck",
+    "validate:build": "pnpm run build:packages && node scripts/validate-build.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.8.3"
+  }
+}

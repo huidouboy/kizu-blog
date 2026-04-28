@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="{{site.language}}" style="--theme-accent-color: {{theme.accentColor}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{content.description}}">
+  <meta name="author" content="{{site.author}}">
+  <title>{{content.title}} | {{site.title}}</title>
+  <link rel="stylesheet" href="../../assets/theme/tokens.css">
+  <link rel="stylesheet" href="../../assets/theme/global.css">
+</head>
+<body class="layout-{{theme.layout}} sidebar-{{theme.showSidebar}} animation-{{theme.animation}}" data-content-type="{{content.type}}" data-path="{{path}}">
+  <header class="site-header" data-slot="header">
+    <div>
+      <a class="site-title" href="../../index.html">{{site.title}}</a>
+      <p>{{site.description}}</p>
+    </div>
+    {{site.navigation}}
+  </header>
+  <main class="article-shell" data-slot="main">
+    <article class="article">
+      <p class="eyebrow">Post</p>
+      <h1>{{content.title}}</h1>
+      <div class="article-meta">
+        <time>{{content.date}}</time>
+        <span>{{content.readingTime}}</span>
+      </div>
+      <p class="description">{{content.description}}</p>
+      <div class="tags">{{content.tags}}</div>
+      <div class="article-body">
+        {{content.content}}
+      </div>
+      <nav class="post-pagination" aria-label="Post navigation">
+        {{content.previousPost}}
+        {{content.nextPost}}
+      </nav>
+    </article>
+  </main>
+  <footer class="site-footer" data-slot="footer">
+    <a href="../../archive/index.html">Browse archive</a>
+  </footer>
+</body>
+</html>

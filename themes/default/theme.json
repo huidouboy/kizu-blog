@@ -1,0 +1,33 @@
+{
+  "name": "default",
+  "version": "1.0.0",
+  "slots": ["header", "main", "sidebar", "footer"],
+  "pages": {
+    "home": "layouts/home.html",
+    "post": "layouts/post.html",
+    "page": "layouts/page.html",
+    "archive": "layouts/archive.html",
+    "tag": "layouts/tag.html"
+  },
+  "settings": {
+    "accentColor": {
+      "type": "color",
+      "default": "#7c3aed"
+    },
+    "layout": {
+      "type": "select",
+      "options": ["classic", "magazine"],
+      "default": "classic"
+    },
+    "showSidebar": {
+      "type": "select",
+      "options": ["true", "false"],
+      "default": "true"
+    },
+    "animation": {
+      "type": "select",
+      "options": ["none", "fade"],
+      "default": "fade"
+    }
+  }
+}

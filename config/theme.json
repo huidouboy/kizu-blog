@@ -1,0 +1,9 @@
+{
+  "theme": "default",
+  "settings": {
+    "accentColor": "#7c3aed",
+    "layout": "classic",
+    "showSidebar": "true",
+    "animation": "fade"
+  }
+}
