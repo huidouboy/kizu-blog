@@ -2,106 +2,114 @@
 
 [English](./README.md) | [简体中文](./README.zh.md)
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Output: Static HTML](https://img.shields.io/badge/output-static%20HTML-blue)
-![Version](https://img.shields.io/badge/version-v0.2.0-2f855a)
+A static-first, theme-driven blog engine.
 
-Kizu Blog is a static-first Markdown blog engine. Markdown files stay the source of truth, the build output is portable static HTML, and themes, plugins, and the optional admin panel stay decoupled.
+No database. No framework. Just Markdown, themes, and full control.
 
-Current version: **v0.2.0**
+---
 
-## Features
+## ✨ Features
 
-- Markdown posts and pages from `content/posts` and `content/pages`
-- Static HTML output in `dist/`
-- Theme system with layouts, styles, settings, and UI slots
-- Hook-based plugin system for Markdown transforms and static artifacts
-- Optional file-backed admin panel for content and config editing
-- RSS, sitemap, search index, archive pages, tag pages, reading time, and post navigation
-- Automatic English / Chinese built-in UI labels without translating user-authored Markdown
-- GitHub Pages friendly output
-- Bilingual documentation
+- 📝 Markdown as the source of truth  
+- 🎨 Theme system with official spec  
+- 🔌 Optional plugin system  
+- 🔍 Built-in static search (Ctrl / Cmd + K)  
+- 🌐 Automatic English / Chinese UI  
+- ⚡ Zero backend required  
+- 🧩 Admin panel (optional, file-based)  
 
-## Architecture
+---
 
-```text
-apps/
-  admin/          optional online admin panel
-packages/
-  core/           content, theme, plugin, and rendering primitives
-  cli/            build/dev/preview/deploy commands
-  types/          shared TypeScript contracts
-  theme-default/ default theme package placeholder
-themes/
-  default/        active default theme
-  starter/        minimal theme starting point
-plugins/
-  plugin-seo/
-  plugin-rss/
-  plugin-search/
-```
-
-`packages/core` does not depend on the admin app or the default theme. The generated static site does not require Node.js or the admin server.
-
-Theme authors can use the official [Theme Spec](./docs/theme-spec.md) to build compatible third-party themes.
-
-## Usage
-
-Install dependencies:
+## 🚀 Quick Start
 
 ```bash
 pnpm install
-```
-
-Build packages and the static site:
-
-```bash
 pnpm build
 ```
 
-Validate the generated output:
+Open:
 
-```bash
-pnpm validate:build
+```
+dist/index.html
 ```
 
-Start the optional admin panel:
+---
+
+## 🧠 Philosophy
+
+- Content lives in files, not databases  
+- Output is static and portable  
+- Themes define presentation, not logic  
+- The system stays small and predictable  
+
+---
+
+## 🎨 Theme System
+
+- Official theme specification  
+- Stable template variables  
+- Theme settings schema  
+- Starter theme for learning  
+
+See:
+
+- docs/theme-spec.md
+- docs/theme-spec.zh.md
+- themes/starter/
+
+---
+
+## 🔍 Search
+
+Command-style static search powered by search-index.json.
+
+- Ctrl / Cmd + K  
+- Keyboard navigation  
+- No external service required  
+
+---
+
+## 🌐 i18n
+
+- UI switches automatically (English / Chinese)  
+- Based on browser language  
+- Markdown content is never translated  
+
+---
+
+## 🧩 Admin Panel (Optional)
 
 ```bash
 pnpm admin
 ```
 
-The admin stores its account data in `data/admin/account.json`, hashes passwords, and writes content/config back to Markdown and JSON files.
+- Edit Markdown content  
+- Manage config  
+- Switch themes  
+- Manage plugins  
+- Trigger build  
 
-## UI Language
+---
 
-Set `config/site.json`:
+## 📦 Deployment
 
-```json
-{
-  "language": "auto"
-}
-```
+Deploy `dist/` to any static hosting:
 
-`auto` detects the visitor language in the static frontend. Any language starting with `zh` uses Chinese UI labels; all other languages use English. You can force a language with `"zh-CN"` or `"en"`.
+- GitHub Pages  
+- Cloudflare Pages  
+- Vercel  
+- Any static server  
 
-This only affects built-in UI labels such as Home, Archive, Tags, Reading time, Previous, and Next. Markdown article and page content is never translated automatically.
+---
 
-## Deployment
+## 📌 Status
 
-GitHub Pages is the primary target. The workflow in `.github/workflows/pages.yml` installs dependencies, typechecks, builds, validates, and deploys `dist/`.
+Current version: v0.3.1
 
-Cloudflare Pages can use:
+Stable for personal use. Theme ecosystem is defined and evolving.
 
-- Build command: `pnpm build`
-- Output directory: `dist`
+---
 
-Docker and VPS deployments can serve `dist/` with any static file server.
+## 👤 Author
 
-## Author
-
-kizu (伊甸黎明)
-
-## License
-
-MIT
+kizu
