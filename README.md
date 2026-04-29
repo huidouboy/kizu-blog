@@ -2,114 +2,140 @@
 
 [English](./README.md) | [简体中文](./README.zh.md)
 
-A static-first, theme-driven blog engine.
+A static-first, theme-driven Markdown blog engine with an optional visual admin panel.
 
-No database. No framework. Just Markdown, themes, and full control.
+Kizu Blog keeps Markdown as the source of truth, generates portable static HTML into `dist/`, and keeps themes, plugins, and the admin panel decoupled. You can use it as a full blog system with the admin panel, or as a frontend-only static site generator.
 
----
+## Quick Start: Full Blog + Admin
 
-## ✨ Features
-
-- 📝 Markdown as the source of truth  
-- 🎨 Theme system with official spec  
-- 🔌 Optional plugin system  
-- 🔍 Built-in static search (Ctrl / Cmd + K)  
-- 🌐 Automatic English / Chinese UI  
-- ⚡ Zero backend required  
-- 🧩 Admin panel (optional, file-based)  
-
----
-
-## 🚀 Quick Start
+This is the easiest path for beginners. It builds the static blog and starts the optional admin panel so you can manage the site visually.
 
 ```bash
+git clone https://github.com/huidouboy/kizu-blog.git
+cd kizu-blog
+corepack enable
+corepack prepare pnpm@10.8.0 --activate
 pnpm install
 pnpm build
+pnpm admin
 ```
 
 Open:
 
+```text
+http://localhost:4173
 ```
-dist/index.html
+
+On the first visit, the admin panel shows the setup screen for creating the first admin account. The password is hashed before it is stored. During setup, sample content may be generated based on the browser language.
+
+After setup, you can manage posts, pages, site config, theme settings, enabled plugins, and builds from the admin UI. The generated public site still lives in `dist/`. The admin panel is optional and is not required for public static hosting.
+
+## Static Site Only
+
+Use this path if you only want static output and do not want to start the admin server.
+
+```bash
+git clone https://github.com/huidouboy/kizu-blog.git
+cd kizu-blog
+corepack enable
+corepack prepare pnpm@10.8.0 --activate
+pnpm install
+pnpm build
 ```
 
----
+This generates `dist/` only. No admin server is started. Deploy `dist/` to GitHub Pages, Cloudflare Pages, or any static hosting provider.
 
-## 🧠 Philosophy
+## Advanced Commands
 
-- Content lives in files, not databases  
-- Output is static and portable  
-- Themes define presentation, not logic  
-- The system stays small and predictable  
+```bash
+pnpm build
+pnpm validate:build
+pnpm admin
+pnpm typecheck
+```
 
----
+`pnpm build` builds packages and writes the static site to `dist/`. `pnpm validate:build` checks the generated output and project boundaries. `pnpm admin` starts the optional admin panel. `pnpm typecheck` runs TypeScript checks across the workspace.
 
-## 🎨 Theme System
+## Features
 
-- Official theme specification  
-- Stable template variables  
-- Theme settings schema  
-- Starter theme for learning  
+- Markdown posts and pages from `content/posts` and `content/pages`
+- Static HTML output in `dist/`
+- Theme system with an official public spec
+- Starter theme for third-party theme authors
+- Optional plugin system for Markdown transforms and static artifacts
+- Optional file-backed admin panel
+- RSS, sitemap, archive pages, tag pages, reading time, and post navigation
+- Built-in static search powered by `search-index.json`
+- Automatic English / Chinese built-in UI labels without translating Markdown content
+- GitHub Pages and Cloudflare Pages friendly output
+
+## Theme System
+
+Themes control layouts, styles, assets, and configurable settings. Third-party themes should use the official theme contract instead of depending on internal implementation details.
 
 See:
 
-- docs/theme-spec.md
-- docs/theme-spec.zh.md
-- themes/starter/
+- [Theme Spec](./docs/theme-spec.md)
+- [Chinese Theme Spec](./docs/theme-spec.zh.md)
+- `themes/starter/`
 
----
+## Search
 
-## 🔍 Search
+The default theme includes a command-style search overlay. It uses the generated static `search-index.json`, works without a backend, and can be opened with `Ctrl+K` or `Cmd+K`.
 
-Command-style static search powered by search-index.json.
+If the search plugin is disabled and `search-index.json` is missing, the UI fails gracefully.
 
-- Ctrl / Cmd + K  
-- Keyboard navigation  
-- No external service required  
+## i18n
 
----
+Set `config/site.json`:
 
-## 🌐 i18n
-
-- UI switches automatically (English / Chinese)  
-- Based on browser language  
-- Markdown content is never translated  
-
----
-
-## 🧩 Admin Panel (Optional)
-
-```bash
-pnpm admin
+```json
+{
+  "language": "auto"
+}
 ```
 
-- Edit Markdown content  
-- Manage config  
-- Switch themes  
-- Manage plugins  
-- Trigger build  
+`auto` detects the visitor language in the static frontend. Any language starting with `zh` uses Chinese UI labels; all other languages use English. You can force a language with `"zh-CN"` or `"en"`.
 
----
+This only affects built-in UI labels and built-in demo/default text. User-authored Markdown articles and pages are never translated automatically.
 
-## 📦 Deployment
+## Admin Details
 
-Deploy `dist/` to any static hosting:
+The admin panel is optional and file-backed. It writes to:
 
-- GitHub Pages  
-- Cloudflare Pages  
-- Vercel  
-- Any static server  
+- `content/posts/*.md`
+- `content/pages/*.md`
+- `config/site.json`
+- `config/theme.json`
+- `config/plugins.json`
 
----
+Admin account data is stored in `data/admin/account.json`. A single admin account is supported for now. Passwords are hashed, not stored as plaintext.
 
-## 📌 Status
+The admin can list, create, edit, delete, and preview content; edit site config; switch themes; edit theme settings from `theme.json`; enable or disable plugins; and trigger a build.
 
-Current version: v0.3.1
+## Deployment
 
-Stable for personal use. Theme ecosystem is defined and evolving.
+The public site is the static `dist/` directory. You do not need the admin server for public hosting.
 
----
+GitHub Pages is the primary deployment target. The workflow in `.github/workflows/pages.yml` installs dependencies, runs typecheck, builds, validates, and deploys `dist/`.
 
-## 👤 Author
+Cloudflare Pages can use:
+
+- Build command: `pnpm build`
+- Output directory: `dist`
+
+Docker, VPS, Vercel, Netlify, or any static file server can serve `dist/`.
+
+## Status
+
+Current version: **v0.3.1**
+
+Stable for personal use. The theme ecosystem is defined and still evolving.
+
+## Author
 
 kizu
+
+## License
+
+MIT
