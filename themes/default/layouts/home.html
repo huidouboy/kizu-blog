@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="{{site.description}}">
+  <meta name="description" content="{{site.description}}" data-site-description-content data-site-description-en="{{site.descriptionEn}}" data-site-description-zh="{{site.descriptionZhCn}}">
   <meta name="author" content="{{site.author}}">
   <title>{{content.title}}</title>
   <link rel="stylesheet" href="assets/theme/tokens.css">
@@ -14,7 +14,7 @@
   <header class="site-header" data-slot="header">
     <div class="site-brand">
       <a class="site-title" href="index.html">{{site.title}}</a>
-      <p>{{site.description}}</p>
+      <p data-site-description data-site-description-en="{{site.descriptionEn}}" data-site-description-zh="{{site.descriptionZhCn}}">{{site.description}}</p>
     </div>
     <div class="header-actions">
       {{site.navigation}}
@@ -28,9 +28,9 @@
   </header>
   <main class="home-shell" data-slot="main">
     <section class="hero-section">
-      <p class="eyebrow">{{ui.personalBlogPrefix}}{{site.author}}{{ui.personalBlogSuffix}}</p>
+      <p class="eyebrow">{{site.title}} by {{site.author}}</p>
       <h1>{{content.title}}</h1>
-      <p class="lede">{{content.description}}</p>
+      <p class="lede" data-site-description data-site-description-en="{{site.descriptionEn}}" data-site-description-zh="{{site.descriptionZhCn}}">{{content.description}}</p>
       <div class="hero-actions">
         <a class="primary-link" href="archive/index.html">{{ui.viewAllPosts}}</a>
       </div>
@@ -52,7 +52,7 @@
     </section>
   </main>
   <footer class="site-footer" data-slot="footer">
-    <span>{{site.title}}</span>
+    <span>{{site.title}} by {{site.author}}</span>
     <a href="archive/index.html">{{ui.browseArchive}}</a>
   </footer>
   <div class="search-overlay" data-search-overlay data-search-index-path="search-index.json" hidden>

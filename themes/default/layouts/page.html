@@ -14,7 +14,7 @@
   <header class="site-header" data-slot="header">
     <div class="site-brand">
       <a class="site-title" href="../../index.html">{{site.title}}</a>
-      <p>{{site.description}}</p>
+      <p data-site-description data-site-description-en="{{site.descriptionEn}}" data-site-description-zh="{{site.descriptionZhCn}}">{{site.description}}</p>
     </div>
     <div class="header-actions">
       {{site.navigation}}
@@ -39,6 +39,7 @@
     </article>
   </main>
   <footer class="site-footer" data-slot="footer">
+    <span>{{site.title}} by {{site.author}}</span>
     <a href="../../index.html">{{ui.backToHome}}</a>
   </footer>
   <div class="search-overlay" data-search-overlay data-search-index-path="../../search-index.json" hidden>

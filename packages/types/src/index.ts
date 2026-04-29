@@ -1,8 +1,14 @@
 export type FrontmatterDate = string | Date;
 
+export interface LocalizedText {
+  en?: string;
+  "zh-CN"?: string;
+}
+
 export interface SiteConfig {
   title: string;
   description?: string;
+  descriptionLocales?: LocalizedText;
   author?: string;
   baseUrl?: string;
   url?: string;
@@ -110,6 +116,8 @@ export interface RenderContext {
 export interface TemplateSite {
   title: string;
   description: string;
+  descriptionEn?: string;
+  descriptionZhCn?: string;
   author: string;
   baseUrl: string;
   url?: string;

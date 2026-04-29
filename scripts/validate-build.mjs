@@ -51,8 +51,15 @@ assertIncludes(contents.post, 'data-path="/posts/hello-world/"', files.post);
 assertIncludes(contents.page, 'data-path="/pages/about/"', files.page);
 assertIncludes(contents.home, "layout-classic sidebar-true animation-fade", files.home);
 assertIncludes(contents.home, "--theme-accent-color: #7c3aed", files.home);
-assertIncludes(contents.home, 'data-i18n="personalBlogPrefix"', files.home);
-assertIncludes(contents.home, "Static Author", files.home);
+assertIncludes(contents.home, "Kizu Blog", files.home);
+assertIncludes(contents.home, "kizu", files.home);
+assertIncludes(contents.home, "Kizu Blog by kizu", files.home);
+assertIncludes(contents.archive, "Kizu Blog by kizu", files.archive);
+assertIncludes(contents.post, "Kizu Blog by kizu", files.post);
+assertIncludes(contents.page, "Kizu Blog by kizu", files.page);
+assertIncludes(contents.tag, "Kizu Blog by kizu", files.tag);
+assertIncludes(contents.home, "A static-first, theme-driven personal blog engine.", files.home);
+assertIncludes(contents.home, "静态优先、主题驱动的个人博客引擎。", files.home);
 assertIncludes(contents.home, 'data-i18n="search"', files.home);
 assertIncludes(contents.home, "data-search-open", files.home);
 assertIncludes(contents.home, 'data-search-index-path="search-index.json"', files.home);
@@ -76,7 +83,7 @@ assertIncludes(contents.page, "About", files.page);
 assertIncludes(contents.tag, 'data-content-type="tag"', files.tag);
 assertIncludes(contents.tag, 'data-i18n="tag"', files.tag);
 assertIncludes(contents.tag, "markdown", files.tag);
-assertIncludes(contents.home, 'meta name="generator" content="Static Blog Engine"', files.home);
+assertIncludes(contents.home, 'meta name="generator" content="Static-first Blog Engine"', files.home);
 assertIncludes(contents.post, 'meta name="static-blog:path" content="/posts/hello-world/"', files.post);
 assertIncludes(contents.rss, "<rss version=\"2.0\">", files.rss);
 assertIncludes(contents.rss, "<title>Hello World</title>", files.rss);
@@ -102,6 +109,18 @@ assertIncludes(contents.searchScript, "routeToRelativeHref", files.searchScript)
 assertIncludes(contents.searchScript, "ArrowDown", files.searchScript);
 assertIncludes(contents.searchScript, "event.target !== input", files.searchScript);
 assertIncludes(contents.searchScript, "hasIndexError", files.searchScript);
+assertNotIncludes(Object.values(contents).join("\n"), "Static Blog", "generated dist output");
+assertNotIncludes(Object.values(contents).join("\n"), "Static Author", "generated dist output");
+assertNotIncludes(
+  Object.values(contents).join("\n"),
+  "A minimal static-first Markdown blog.",
+  "generated dist output",
+);
+assertNotIncludes(
+  Object.values(contents).join("\n"),
+  "PERSONAL BLOG BY STATIC AUTHOR",
+  "generated dist output",
+);
 
 await validateArchitectureBoundaries();
 await validateContentLoading();
@@ -387,7 +406,7 @@ function validateAdminSafetyValidation() {
   }
 }
 
-function validateAutomaticBrowserLanguage(homeHtml) {
+function validateAutomaticBrowserLanguageLegacy(homeHtml) {
   const script = extractFirstInlineScript(homeHtml);
   const zhResult = runAutoLanguageScript(script, ["zh-CN", "en-US"]);
   const enResult = runAutoLanguageScript(script, ["en-US", "en"]);
@@ -412,7 +431,7 @@ function extractFirstInlineScript(html) {
   return match[1];
 }
 
-function runAutoLanguageScript(script, languages) {
+function runAutoLanguageScriptLegacy(script, languages) {
   const textElements = [
     createFakeElement({ "data-i18n": "home" }, "Home"),
     createFakeElement({ "data-i18n": "archive" }, "Archive"),
@@ -454,7 +473,7 @@ function runAutoLanguageScript(script, languages) {
   };
 }
 
-function createFakeElement(attributes, textContent) {
+function createFakeElementLegacy(attributes, textContent) {
   return {
     textContent,
     getAttribute(key) {
@@ -463,7 +482,134 @@ function createFakeElement(attributes, textContent) {
   };
 }
 
-async function validateForcedUiLanguages() {
+function validateAutomaticBrowserLanguage(homeHtml) {
+  const script = extractFirstInlineScript(homeHtml);
+  const zhResult = runAutoLanguageScript(script, ["zh-CN", "en-US"]);
+  const enResult = runAutoLanguageScript(script, ["en-US", "en"]);
+
+  assertEqual(zhResult.htmlLang, "zh-CN", "Chinese browser UI locale");
+  assertEqual(zhResult.home, "\u9996\u9875", "Chinese browser home label");
+  assertEqual(zhResult.archive, "\u5f52\u6863", "Chinese browser archive label");
+  assertEqual(
+    zhResult.readingTime,
+    "\u7ea6 3 \u5206\u949f\u9605\u8bfb",
+    "Chinese browser reading time label",
+  );
+  assertEqual(
+    zhResult.siteDescription,
+    "\u9759\u6001\u4f18\u5148\u3001\u4e3b\u9898\u9a71\u52a8\u7684\u4e2a\u4eba\u535a\u5ba2\u5f15\u64ce\u3002",
+    "Chinese browser site description",
+  );
+  assertEqual(
+    zhResult.metaDescription,
+    "\u9759\u6001\u4f18\u5148\u3001\u4e3b\u9898\u9a71\u52a8\u7684\u4e2a\u4eba\u535a\u5ba2\u5f15\u64ce\u3002",
+    "Chinese browser meta description",
+  );
+  assertEqual(enResult.htmlLang, "en", "English browser UI locale");
+  assertEqual(enResult.home, "Home", "English browser home label");
+  assertEqual(enResult.archive, "Archive", "English browser archive label");
+  assertEqual(enResult.readingTime, "3 min read", "English browser reading time label");
+  assertEqual(
+    enResult.siteDescription,
+    "A static-first, theme-driven personal blog engine.",
+    "English browser site description",
+  );
+  assertEqual(
+    enResult.metaDescription,
+    "A static-first, theme-driven personal blog engine.",
+    "English browser meta description",
+  );
+}
+
+function runAutoLanguageScript(script, languages) {
+  const textElements = [
+    createFakeElement({ "data-i18n": "home" }, "Home"),
+    createFakeElement({ "data-i18n": "archive" }, "Archive"),
+  ];
+  const readingTimeElements = [
+    createFakeElement({ "data-minutes": "3" }, "3 min read"),
+  ];
+  const siteDescriptionElements = [
+    createFakeElement(
+      {
+        "data-site-description-en": "A static-first, theme-driven personal blog engine.",
+        "data-site-description-zh":
+          "\u9759\u6001\u4f18\u5148\u3001\u4e3b\u9898\u9a71\u52a8\u7684\u4e2a\u4eba\u535a\u5ba2\u5f15\u64ce\u3002",
+      },
+      "A static-first, theme-driven personal blog engine.",
+    ),
+  ];
+  const metaDescriptionElements = [
+    createFakeElement(
+      {
+        content: "A static-first, theme-driven personal blog engine.",
+        "data-site-description-content": "",
+        "data-site-description-en": "A static-first, theme-driven personal blog engine.",
+        "data-site-description-zh":
+          "\u9759\u6001\u4f18\u5148\u3001\u4e3b\u9898\u9a71\u52a8\u7684\u4e2a\u4eba\u535a\u5ba2\u5f15\u64ce\u3002",
+      },
+      "",
+    ),
+  ];
+  const documentElement = { lang: "", dataset: {} };
+  const document = {
+    documentElement,
+    readyState: "complete",
+    querySelectorAll(selector) {
+      if (selector === "[data-i18n]") {
+        return textElements;
+      }
+
+      if (selector === "[data-i18n-reading-time]") {
+        return readingTimeElements;
+      }
+
+      if (selector === "[data-site-description]") {
+        return siteDescriptionElements;
+      }
+
+      if (selector === "[data-site-description-content]") {
+        return metaDescriptionElements;
+      }
+
+      return [];
+    },
+    addEventListener() {},
+  };
+
+  runInNewContext(script, {
+    document,
+    navigator: {
+      language: languages[0],
+      languages,
+    },
+  });
+
+  return {
+    htmlLang: documentElement.lang,
+    home: textElements[0].textContent,
+    archive: textElements[1].textContent,
+    readingTime: readingTimeElements[0].textContent,
+    siteDescription: siteDescriptionElements[0].textContent,
+    metaDescription: metaDescriptionElements[0].getAttribute("content"),
+  };
+}
+
+function createFakeElement(attributes, textContent) {
+  const attributeMap = { ...attributes };
+
+  return {
+    textContent,
+    getAttribute(key) {
+      return attributeMap[key] ?? null;
+    },
+    setAttribute(key, value) {
+      attributeMap[key] = value;
+    },
+  };
+}
+
+async function validateForcedUiLanguagesLegacy() {
   await validateForcedUiLanguage("zh-CN", {
     body: "User-authored content stays English.",
     expected: ["首页", "归档", "文章", "搜索", "发布于", "阅读时间", "约 1 分钟阅读"],
@@ -476,7 +622,7 @@ async function validateForcedUiLanguages() {
   });
 }
 
-async function validateForcedUiLanguage(language, { body, expected, title }) {
+async function validateForcedUiLanguageLegacy(language, { body, expected, title }) {
   const projectDir = await mkdtemp(join(tmpdir(), `static-blog-i18n-${language}-`));
 
   try {
@@ -490,6 +636,84 @@ async function validateForcedUiLanguage(language, { body, expected, title }) {
       },
       layouts: {
         "home.html": `<!doctype html><html lang="{{site.language}}"><head><title>{{site.title}}</title>{{ui.script}}</head><body>{{ui.home}} {{ui.archive}} {{ui.posts}} {{ui.search}} {{content.content}}</body></html>`,
+        "post.html": `<!doctype html><html lang="{{site.language}}"><head><title>{{content.title}}</title>{{ui.script}}</head><body>{{ui.publishedOn}} {{ui.readingTime}} {{content.readingTime}} {{content.content}}</body></html>`,
+        "page.html": `<!doctype html><html><body>{{content.content}}</body></html>`,
+        "archive.html": `<!doctype html><html><body>{{ui.archive}} {{content.content}}</body></html>`,
+      },
+    });
+    await writeFile(
+      join(projectDir, "content", "posts", "i18n-post.md"),
+      `---\ntitle: ${title}\ndate: 2026-04-28\ntags: [i18n]\ndraft: false\n---\n${body}\n`,
+    );
+
+    await buildSite({ rootDir: projectDir });
+
+    const homeHtml = await readFile(join(projectDir, "dist", "index.html"), "utf8");
+    const postHtml = await readFile(
+      join(projectDir, "dist", "posts", "i18n-post", "index.html"),
+      "utf8",
+    );
+    const combinedHtml = `${homeHtml}\n${postHtml}`;
+
+    for (const label of expected) {
+      assertIncludes(combinedHtml, label, `${language} UI output`);
+    }
+
+    assertIncludes(postHtml, body, `${language} user content preservation`);
+  } finally {
+    await rm(projectDir, { recursive: true, force: true });
+  }
+}
+
+async function validateForcedUiLanguages() {
+  await validateForcedUiLanguage("zh-CN", {
+    body: "User-authored content stays English.",
+    expected: [
+      "\u9996\u9875",
+      "\u5f52\u6863",
+      "\u6587\u7ae0",
+      "\u641c\u7d22",
+      "\u53d1\u5e03\u4e8e",
+      "\u9605\u8bfb\u65f6\u95f4",
+      "\u7ea6 1 \u5206\u949f\u9605\u8bfb",
+      "\u9759\u6001\u4f18\u5148\u3001\u4e3b\u9898\u9a71\u52a8\u7684\u4e2a\u4eba\u535a\u5ba2\u5f15\u64ce\u3002",
+    ],
+    title: "English User Post",
+  });
+  await validateForcedUiLanguage("en", {
+    body: "\u7528\u6237\u81ea\u5df1\u5199\u7684\u6b63\u6587\u4f1a\u4fdd\u6301\u539f\u6837\u3002",
+    expected: [
+      "Home",
+      "Archive",
+      "Posts",
+      "Search",
+      "Published on",
+      "Reading time",
+      "1 min read",
+      "A static-first, theme-driven personal blog engine.",
+    ],
+    title: "\u4e2d\u6587\u7528\u6237\u6587\u7ae0",
+  });
+}
+
+async function validateForcedUiLanguage(language, { body, expected, title }) {
+  const projectDir = await mkdtemp(join(tmpdir(), `static-blog-i18n-${language}-`));
+
+  try {
+    await writeMinimalProject(projectDir, {
+      themeName: "i18n",
+      siteConfig: {
+        title: "I18n Site",
+        description: {
+          en: "A static-first, theme-driven personal blog engine.",
+          "zh-CN":
+            "\u9759\u6001\u4f18\u5148\u3001\u4e3b\u9898\u9a71\u52a8\u7684\u4e2a\u4eba\u535a\u5ba2\u5f15\u64ce\u3002",
+        },
+        author: "Tester",
+        language,
+      },
+      layouts: {
+        "home.html": `<!doctype html><html lang="{{site.language}}"><head><title>{{site.title}}</title><meta name="description" content="{{site.description}}" data-site-description-content data-site-description-en="{{site.descriptionEn}}" data-site-description-zh="{{site.descriptionZhCn}}">{{ui.script}}</head><body><p data-site-description data-site-description-en="{{site.descriptionEn}}" data-site-description-zh="{{site.descriptionZhCn}}">{{site.description}}</p>{{ui.home}} {{ui.archive}} {{ui.posts}} {{ui.search}} {{content.content}}</body></html>`,
         "post.html": `<!doctype html><html lang="{{site.language}}"><head><title>{{content.title}}</title>{{ui.script}}</head><body>{{ui.publishedOn}} {{ui.readingTime}} {{content.readingTime}} {{content.content}}</body></html>`,
         "page.html": `<!doctype html><html><body>{{content.content}}</body></html>`,
         "archive.html": `<!doctype html><html><body>{{ui.archive}} {{content.content}}</body></html>`,

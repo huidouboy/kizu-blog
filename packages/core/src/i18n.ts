@@ -291,6 +291,11 @@ function createAutoLanguageScript(): string {
     return languages.some((language) => String(language).toLowerCase().startsWith("zh")) ? "zh-CN" : "en";
   };
   const formatReadingTime = (locale, minutes) => dictionaries[locale].readingTimeValue.replace("{minutes}", String(minutes || 1));
+  const resolveLocalizedText = (element, locale) => {
+    const zhValue = element.getAttribute("data-site-description-zh");
+    const enValue = element.getAttribute("data-site-description-en");
+    return locale === "zh-CN" ? (zhValue || enValue || "") : (enValue || zhValue || "");
+  };
   const applyLocale = () => {
     const locale = pickLocale();
     const dictionary = dictionaries[locale] || dictionaries.en;
@@ -310,6 +315,14 @@ function createAutoLanguageScript(): string {
     });
     document.querySelectorAll("[data-i18n-reading-time]").forEach((element) => {
       element.textContent = formatReadingTime(locale, element.getAttribute("data-minutes"));
+    });
+    document.querySelectorAll("[data-site-description]").forEach((element) => {
+      const value = resolveLocalizedText(element, locale);
+      if (value) element.textContent = value;
+    });
+    document.querySelectorAll("[data-site-description-content]").forEach((element) => {
+      const value = resolveLocalizedText(element, locale);
+      if (value) element.setAttribute("content", value);
     });
   };
   if (document.readyState === "loading") {

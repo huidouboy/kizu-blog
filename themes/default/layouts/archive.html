@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="{{site.description}}">
+  <meta name="description" content="{{site.description}}" data-site-description-content data-site-description-en="{{site.descriptionEn}}" data-site-description-zh="{{site.descriptionZhCn}}">
   <meta name="author" content="{{site.author}}">
   <title>{{uiText.archive}} | {{site.title}}</title>
   <link rel="stylesheet" href="../assets/theme/tokens.css">
@@ -14,7 +14,7 @@
   <header class="site-header" data-slot="header">
     <div class="site-brand">
       <a class="site-title" href="../index.html">{{site.title}}</a>
-      <p>{{site.description}}</p>
+      <p data-site-description data-site-description-en="{{site.descriptionEn}}" data-site-description-zh="{{site.descriptionZhCn}}">{{site.description}}</p>
     </div>
     <div class="header-actions">
       {{site.navigation}}
@@ -30,13 +30,14 @@
     <header class="page-hero">
       <p class="eyebrow">{{ui.archive}}</p>
       <h1>{{ui.archive}}</h1>
-      <p class="description">{{content.description}}</p>
+      <p class="description" data-site-description data-site-description-en="{{site.descriptionEn}}" data-site-description-zh="{{site.descriptionZhCn}}">{{content.description}}</p>
     </header>
     <article class="archive-panel">
       {{content.content}}
     </article>
   </main>
   <footer class="site-footer" data-slot="footer">
+    <span>{{site.title}} by {{site.author}}</span>
     <a href="../index.html">{{ui.backToHome}}</a>
   </footer>
   <div class="search-overlay" data-search-overlay data-search-index-path="../search-index.json" hidden>

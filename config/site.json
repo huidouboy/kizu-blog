@@ -1,7 +1,10 @@
 {
-  "title": "Static Blog",
-  "description": "A minimal static-first Markdown blog.",
-  "author": "Static Author",
+  "title": "Kizu Blog",
+  "description": {
+    "en": "A static-first, theme-driven personal blog engine.",
+    "zh-CN": "\u9759\u6001\u4f18\u5148\u3001\u4e3b\u9898\u9a71\u52a8\u7684\u4e2a\u4eba\u535a\u5ba2\u5f15\u64ce\u3002"
+  },
+  "author": "kizu",
   "language": "auto",
   "baseUrl": "https://example.com",
   "navigation": [

@@ -21,6 +21,7 @@ import {
 } from "@static-blog/core";
 import type {
   ContentObject,
+  LocalizedText,
   NavigationItem,
   Plugin,
   PluginContext,
@@ -177,13 +178,21 @@ async function loadSiteConfig(configPath: string): Promise<SiteConfig> {
     throw new Error(`${configPath}: expected "title" to be a non-empty string.`);
   }
 
+  const language = optionalString(parsedConfig.language, "language", configPath);
+  const { description, descriptionLocales } = resolveSiteDescription(
+    parsedConfig.description,
+    language,
+    configPath,
+  );
+
   return {
     title: parsedConfig.title.trim(),
-    description: optionalString(parsedConfig.description, "description", configPath),
+    description,
+    descriptionLocales,
     author: optionalString(parsedConfig.author, "author", configPath),
     baseUrl: optionalString(parsedConfig.baseUrl, "baseUrl", configPath),
     url: optionalString(parsedConfig.url, "url", configPath),
-    language: optionalString(parsedConfig.language, "language", configPath),
+    language,
     postsDir: optionalString(parsedConfig.postsDir, "postsDir", configPath),
     pagesDir: optionalString(parsedConfig.pagesDir, "pagesDir", configPath),
     theme: optionalString(parsedConfig.theme, "theme", configPath),
@@ -314,6 +323,10 @@ function createTemplateSite(
   return {
     title: escapeHtml(site.title),
     description: escapeHtml(site.description ?? ""),
+    descriptionEn: site.descriptionLocales?.en ? escapeAttribute(site.descriptionLocales.en) : undefined,
+    descriptionZhCn: site.descriptionLocales?.["zh-CN"]
+      ? escapeAttribute(site.descriptionLocales["zh-CN"])
+      : undefined,
     author: escapeHtml(site.author ?? ""),
     baseUrl: escapeHtml(site.baseUrl ?? site.url ?? ""),
     url: site.url ? escapeHtml(site.url) : undefined,
@@ -1034,6 +1047,90 @@ function optionalNavigation(value: unknown, filePath: string): NavigationItem[] 
 
     return { label, url };
   });
+}
+
+function resolveSiteDescription(
+  value: unknown,
+  language: SiteConfig["language"],
+  filePath: string,
+): Pick<SiteConfig, "description" | "descriptionLocales"> {
+  if (value === undefined) {
+    return {};
+  }
+
+  if (typeof value === "string") {
+    return {
+      description: optionalString(value, "description", filePath),
+    };
+  }
+
+  if (!isRecord(value)) {
+    throw new Error(`${filePath}: expected "description" to be a string or locale object.`);
+  }
+
+  const descriptionLocales = parseLocalizedText(value, "description", filePath);
+  const resolvedLocale = resolveUiLocale(language);
+  const description = pickLocalizedText(descriptionLocales, resolvedLocale);
+
+  return {
+    description,
+    descriptionLocales,
+  };
+}
+
+function parseLocalizedText(
+  value: Record<string, unknown>,
+  key: string,
+  filePath: string,
+): LocalizedText {
+  const localized: LocalizedText = {};
+
+  for (const [localeKey, localeValue] of Object.entries(value)) {
+    if (typeof localeValue !== "string") {
+      throw new Error(`${filePath}: expected "${key}.${localeKey}" to be a string.`);
+    }
+
+    const trimmedValue = localeValue.trim();
+
+    if (!trimmedValue) {
+      continue;
+    }
+
+    const normalizedKey = normalizeLocalizedTextKey(localeKey);
+
+    if (!normalizedKey) {
+      continue;
+    }
+
+    localized[normalizedKey] = trimmedValue;
+  }
+
+  if (!localized.en && !localized["zh-CN"]) {
+    throw new Error(`${filePath}: expected "${key}" to include "en" or "zh-CN".`);
+  }
+
+  return localized;
+}
+
+function normalizeLocalizedTextKey(localeKey: string): keyof LocalizedText | undefined {
+  const normalizedKey = localeKey.trim().toLowerCase();
+
+  if (normalizedKey === "en") {
+    return "en";
+  }
+
+  if (normalizedKey === "zh" || normalizedKey === "zh-cn" || normalizedKey === "zh-hans") {
+    return "zh-CN";
+  }
+
+  return undefined;
+}
+
+function pickLocalizedText(
+  localized: LocalizedText,
+  locale: ReturnType<typeof resolveUiLocale>,
+): string | undefined {
+  return localized[locale] ?? localized.en ?? localized["zh-CN"];
 }
 
 function escapeHtml(value: string): string {

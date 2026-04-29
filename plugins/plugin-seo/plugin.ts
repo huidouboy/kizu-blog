@@ -11,7 +11,7 @@ const plugin: Plugin = {
       const path = escapeHtml(context?.path ?? "/");
 
       return [
-        '<meta name="generator" content="Static Blog Engine">',
+        '<meta name="generator" content="Static-first Blog Engine">',
         `<meta property="og:title" content="${title}">`,
         `<meta property="og:description" content="${description}">`,
         `<meta property="og:type" content="article">`,
