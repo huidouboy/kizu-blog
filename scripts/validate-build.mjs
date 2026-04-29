@@ -6,6 +6,7 @@ import { runInNewContext } from "node:vm";
 import {
   createSlug,
   loadActiveTheme,
+  loadThemeManifest,
   loadPages,
   loadPosts,
   renderTemplate,
@@ -125,6 +126,9 @@ assertNotIncludes(
 await validateArchitectureBoundaries();
 await validateContentLoading();
 await validateThemeLoading();
+await validateOfficialThemeSpec();
+await validateStarterThemeBuild();
+await validateThemeAssetCopying();
 await validateErrorHandling();
 await validateAdminSafetyValidation();
 validateAutomaticBrowserLanguage(contents.home);
@@ -293,6 +297,174 @@ async function validateThemeLoading() {
 
     assertEqual(theme.name, "theme-test", "active theme name");
     assertIncludes(rendered, "Theme Site home #123456 /", "render context");
+    assertEqual(theme.layouts.tag.includes("tag"), true, "required tag layout");
+  } finally {
+    await rm(projectDir, { recursive: true, force: true });
+  }
+}
+
+async function validateOfficialThemeSpec() {
+  const defaultManifest = await loadThemeManifest(
+    join(rootDir, "themes", "default", "theme.json"),
+  );
+  const starterManifest = await loadThemeManifest(
+    join(rootDir, "themes", "starter", "theme.json"),
+  );
+
+  await assertThemeMatchesSpec("default", defaultManifest);
+  await assertThemeMatchesSpec("starter", starterManifest);
+
+  const themeSpec = await readFile(join(rootDir, "docs", "theme-spec.md"), "utf8");
+  const themeSpecZh = await readFile(join(rootDir, "docs", "theme-spec.zh.md"), "utf8");
+  const readme = await readFile(join(rootDir, "README.md"), "utf8");
+  const readmeZh = await readFile(join(rootDir, "README.zh.md"), "utf8");
+
+  assertIncludes(themeSpec, "## Directory Structure", "docs/theme-spec.md");
+  assertIncludes(themeSpec, "{{content.previous}}", "docs/theme-spec.md");
+  assertIncludes(themeSpec, "{{theme.settings.*}}", "docs/theme-spec.md");
+  assertIncludes(themeSpecZh, "## 目录结构", "docs/theme-spec.zh.md");
+  assertIncludes(themeSpecZh, "{{content.previous}}", "docs/theme-spec.zh.md");
+  assertIncludes(readme, "./docs/theme-spec.md", "README.md");
+  assertIncludes(readmeZh, "./docs/theme-spec.zh.md", "README.zh.md");
+}
+
+async function assertThemeMatchesSpec(themeName, manifest) {
+  const themeDir = join(rootDir, "themes", themeName);
+
+  for (const [layoutName, layoutPath] of Object.entries(manifest.pages)) {
+    if (!["home", "post", "page", "archive", "tag"].includes(layoutName)) {
+      continue;
+    }
+
+    if (!(await pathExists(join(themeDir, layoutPath)))) {
+      throw new Error(`${themeName} theme is missing required layout: ${layoutPath}`);
+    }
+  }
+
+  assertEqual(Boolean(manifest.name), true, `${themeName} theme name`);
+  assertEqual(Boolean(manifest.version), true, `${themeName} theme version`);
+  assertEqual(Boolean(manifest.pages.tag), true, `${themeName} tag layout`);
+
+  if (manifest.settings?.showSidebar) {
+    assertEqual(manifest.settings.showSidebar.type, "boolean", `${themeName} showSidebar setting`);
+  }
+}
+
+async function validateStarterThemeBuild() {
+  const projectDir = await mkdtemp(join(tmpdir(), "static-blog-starter-theme-"));
+
+  try {
+    await mkdir(join(projectDir, "config"), { recursive: true });
+    await mkdir(join(projectDir, "content", "posts"), { recursive: true });
+    await mkdir(join(projectDir, "content", "pages"), { recursive: true });
+    await mkdir(join(projectDir, "themes"), { recursive: true });
+    await cp(join(rootDir, "themes", "starter"), join(projectDir, "themes", "starter"), {
+      recursive: true,
+    });
+    await writeFile(
+      join(projectDir, "config", "site.json"),
+      JSON.stringify({
+        title: "Starter Site",
+        description: "Starter theme check",
+        author: "Tester",
+        language: "en",
+      }),
+    );
+    await writeFile(
+      join(projectDir, "config", "theme.json"),
+      JSON.stringify({
+        theme: "starter",
+        settings: {
+          accentColor: "#0f766e",
+          layout: "classic",
+          showSidebar: true,
+          animation: "none",
+        },
+      }),
+    );
+    await writeFile(
+      join(projectDir, "content", "posts", "starter-post.md"),
+      `---\ntitle: Starter Post\ndate: 2026-04-28\ntags: [starter]\ndraft: false\ndescription: Starter theme post.\n---\nStarter body.\n`,
+    );
+
+    const result = await buildSite({ rootDir: projectDir });
+    const homeHtml = await readFile(join(projectDir, "dist", "index.html"), "utf8");
+    const postHtml = await readFile(
+      join(projectDir, "dist", "posts", "starter-post", "index.html"),
+      "utf8",
+    );
+
+    assertEqual(result.theme, "starter", "starter theme build result");
+    assertIncludes(homeHtml, "starter-theme", "starter home output");
+    assertIncludes(homeHtml, "Starter Site", "starter home output");
+    assertIncludes(postHtml, "Starter Post", "starter post output");
+    assertIncludes(postHtml, "--accent: #0f766e", "starter theme setting");
+    assertEqual(
+      await pathExists(join(projectDir, "dist", "assets", "theme", "tokens.css")),
+      true,
+      "starter tokens copied",
+    );
+    assertEqual(
+      await pathExists(join(projectDir, "dist", "assets", "theme", "global.css")),
+      true,
+      "starter global copied",
+    );
+  } finally {
+    await rm(projectDir, { recursive: true, force: true });
+  }
+}
+
+async function validateThemeAssetCopying() {
+  const projectDir = await mkdtemp(join(tmpdir(), "static-blog-theme-assets-"));
+
+  try {
+    await writeMinimalProject(projectDir, {
+      themeName: "asset-theme",
+      siteConfig: {
+        title: "Asset Site",
+        description: "Asset copy check",
+        language: "en",
+      },
+      themeConfig: { theme: "asset-theme" },
+    });
+
+    const themeDir = join(projectDir, "themes", "asset-theme");
+
+    await mkdir(join(themeDir, "styles", "nested"), { recursive: true });
+    await mkdir(join(themeDir, "assets", "icons"), { recursive: true });
+    await writeFile(join(themeDir, "styles", "tokens.css"), ":root { --asset-check: ok; }");
+    await writeFile(join(themeDir, "styles", "extra.js"), "window.assetCheck = true;");
+    await writeFile(join(themeDir, "styles", "nested", "extra.css"), ".nested { color: red; }");
+    await writeFile(join(themeDir, "assets", "icons", "logo.txt"), "logo");
+    await writeFile(join(themeDir, "notes.md"), "Do not copy root notes.");
+
+    await buildSite({ rootDir: projectDir });
+
+    assertEqual(
+      await pathExists(join(projectDir, "dist", "assets", "theme", "tokens.css")),
+      true,
+      "theme tokens copied",
+    );
+    assertEqual(
+      await pathExists(join(projectDir, "dist", "assets", "theme", "extra.js")),
+      true,
+      "theme script copied",
+    );
+    assertEqual(
+      await pathExists(join(projectDir, "dist", "assets", "theme", "nested", "extra.css")),
+      true,
+      "nested theme style copied",
+    );
+    assertEqual(
+      await pathExists(join(projectDir, "dist", "assets", "theme", "assets", "icons", "logo.txt")),
+      true,
+      "theme asset copied",
+    );
+    assertEqual(
+      await pathExists(join(projectDir, "dist", "assets", "theme", "notes.md")),
+      false,
+      "unrelated theme file not copied",
+    );
   } finally {
     await rm(projectDir, { recursive: true, force: true });
   }
@@ -349,11 +521,43 @@ async function validateErrorHandling() {
     });
     await assertRejectsMessage(
       () => buildSite({ rootDir: missingLayoutDir }),
-      "Missing theme layout file",
+      "Missing required theme layout",
       "missing layout file",
     );
   } finally {
     await rm(missingLayoutDir, { recursive: true, force: true });
+  }
+
+  const invalidThemeSettingDir = await mkdtemp(join(tmpdir(), "static-blog-invalid-theme-setting-"));
+
+  try {
+    await writeMinimalProject(invalidThemeSettingDir, {
+      manifest: {
+        name: "test",
+        version: "1.0.0",
+        pages: {
+          home: "layouts/home.html",
+          post: "layouts/post.html",
+          page: "layouts/page.html",
+          archive: "layouts/archive.html",
+          tag: "layouts/tag.html",
+        },
+        settings: {
+          layout: {
+            type: "select",
+            options: ["classic"],
+            default: "magazine",
+          },
+        },
+      },
+    });
+    await assertRejectsMessage(
+      () => buildSite({ rootDir: invalidThemeSettingDir }),
+      'expected "settings.layout.default" to be one of classic',
+      "invalid theme setting schema",
+    );
+  } finally {
+    await rm(invalidThemeSettingDir, { recursive: true, force: true });
   }
 
   const missingPluginDir = await mkdtemp(join(tmpdir(), "static-blog-missing-plugin-"));
@@ -859,6 +1063,7 @@ async function validatePluginHooks() {
           post: "layouts/post.html",
           page: "layouts/page.html",
           archive: "layouts/archive.html",
+          tag: "layouts/tag.html",
         },
       }),
     );
@@ -876,6 +1081,10 @@ async function validatePluginHooks() {
     );
     await writeFile(
       join(projectDir, "themes", "test", "layouts", "archive.html"),
+      `<!doctype html><html><head><title>{{content.title}}</title></head><body>{{content.content}}</body></html>`,
+    );
+    await writeFile(
+      join(projectDir, "themes", "test", "layouts", "tag.html"),
       `<!doctype html><html><head><title>{{content.title}}</title></head><body>{{content.content}}</body></html>`,
     );
     await writeFile(
@@ -1023,6 +1232,7 @@ async function validateLegacyTemplateVariables() {
           post: "layouts/post.html",
           page: "layouts/page.html",
           archive: "layouts/archive.html",
+          tag: "layouts/tag.html",
         },
       }),
     );
@@ -1040,6 +1250,10 @@ async function validateLegacyTemplateVariables() {
     );
     await writeFile(
       join(projectDir, "themes", "legacy", "layouts", "archive.html"),
+      `<main data-content-type="{{content.type}}">{{content.content}}</main>`,
+    );
+    await writeFile(
+      join(projectDir, "themes", "legacy", "layouts", "tag.html"),
       `<main data-content-type="{{content.type}}">{{content.content}}</main>`,
     );
 
@@ -1102,6 +1316,7 @@ async function validateBaseUrlSubpath() {
           post: "layouts/post.html",
           page: "layouts/page.html",
           archive: "layouts/archive.html",
+          tag: "layouts/tag.html",
         },
       }),
     );
@@ -1119,6 +1334,10 @@ async function validateBaseUrlSubpath() {
     );
     await writeFile(
       join(projectDir, "themes", "subpath", "layouts", "archive.html"),
+      `<!doctype html><html><head><title>{{content.title}}</title></head><body>{{content.content}}</body></html>`,
+    );
+    await writeFile(
+      join(projectDir, "themes", "subpath", "layouts", "tag.html"),
       `<!doctype html><html><head><title>{{content.title}}</title></head><body>{{content.content}}</body></html>`,
     );
 
@@ -1149,6 +1368,7 @@ async function writeMinimalProject(
         post: "layouts/post.html",
         page: "layouts/page.html",
         archive: "layouts/archive.html",
+        tag: "layouts/tag.html",
       },
     },
     layouts = {
@@ -1156,6 +1376,7 @@ async function writeMinimalProject(
       "post.html": "<article>{{content.title}}</article>",
       "page.html": "<article>{{content.title}}</article>",
       "archive.html": "<main>{{content.type}}</main>",
+      "tag.html": "<main>tag {{content.title}}</main>",
     },
     siteConfig = { title: "Test Site", description: "Test site", language: "en" },
     themeConfig = { theme: themeName },
@@ -1175,7 +1396,12 @@ async function writeMinimalProject(
 
   await writeFile(join(projectDir, "themes", themeName, "theme.json"), JSON.stringify(manifest));
 
-  for (const [fileName, content] of Object.entries(layouts)) {
+  const resolvedLayouts = {
+    "tag.html": "<main>tag {{content.title}}</main>",
+    ...layouts,
+  };
+
+  for (const [fileName, content] of Object.entries(resolvedLayouts)) {
     await writeFile(join(projectDir, "themes", themeName, "layouts", fileName), content);
   }
 }

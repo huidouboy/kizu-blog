@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="{{site.language}}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{content.description}}">
+    <title>{{content.title}} - {{site.title}}</title>
+    <link rel="stylesheet" href="../../assets/theme/tokens.css">
+    <link rel="stylesheet" href="../../assets/theme/global.css">
+    {{ui.script}}
+  </head>
+  <body class="starter-theme" style="--accent: {{theme.settings.accentColor}}">
+    <header class="site-header">
+      <a class="brand" href="../../index.html">{{site.title}}</a>
+      {{site.navigation}}
+    </header>
+    <main>
+      <section class="archive">
+        <p class="eyebrow">{{ui.tags}}</p>
+        <h1>{{content.title}}</h1>
+        <p>{{content.description}}</p>
+        {{content.content}}
+      </section>
+    </main>
+    <footer class="site-footer">{{site.title}} by {{site.author}}</footer>
+  </body>
+</html>

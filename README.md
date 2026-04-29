@@ -34,6 +34,7 @@ packages/
   theme-default/ default theme package placeholder
 themes/
   default/        active default theme
+  starter/        minimal theme starting point
 plugins/
   plugin-seo/
   plugin-rss/
@@ -41,6 +42,8 @@ plugins/
 ```
 
 `packages/core` does not depend on the admin app or the default theme. The generated static site does not require Node.js or the admin server.
+
+Theme authors can use the official [Theme Spec](./docs/theme-spec.md) to build compatible third-party themes.
 
 ## Usage
 

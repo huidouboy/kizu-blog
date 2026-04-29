@@ -42,12 +42,18 @@ export interface PageFrontmatter {
 
 export interface ThemeManifest {
   name: string;
+  displayName?: string;
   version: string;
-  slots: string[];
+  slots?: string[];
   pages: ThemePages;
   settings?: Record<string, ThemeSettingDefinition>;
   description?: string;
   author?: string;
+  engine?: ThemeEngineCompatibility;
+}
+
+export interface ThemeEngineCompatibility {
+  version?: string;
 }
 
 export interface ThemePages {
@@ -55,7 +61,7 @@ export interface ThemePages {
   post: string;
   page: string;
   archive: string;
-  tag?: string;
+  tag: string;
 }
 
 export type ThemeSettingDefinition =
@@ -67,11 +73,15 @@ export type ThemeSettingDefinition =
       type: "select";
       options: string[];
       default: string;
+    }
+  | {
+      type: "boolean";
+      default: boolean;
     };
 
 export interface ThemeConfig {
   theme: string;
-  settings?: Record<string, string>;
+  settings?: Record<string, string | boolean>;
 }
 
 export type ContentType = "home" | "post" | "page" | "archive" | "tag";
@@ -86,11 +96,13 @@ export interface ContentObject {
   type: ContentType;
   url: string;
   readingTime: string;
+  previous: string;
+  next: string;
   previousPost: string;
   nextPost: string;
 }
 
-export type ThemeSettings = Record<string, string>;
+export type ThemeSettings = Record<string, string | Record<string, string>>;
 
 export interface RenderListItem {
   title: string;
@@ -102,6 +114,13 @@ export interface RenderListItem {
   excerpt?: string;
 }
 
+export interface RenderTagItem {
+  name: string;
+  slug: string;
+  url: string;
+  count: number;
+}
+
 export interface RenderContext {
   site: TemplateSite;
   content: ContentObject;
@@ -110,6 +129,7 @@ export interface RenderContext {
   uiText: Record<string, string>;
   posts: RenderListItem[];
   pages: RenderListItem[];
+  tags: RenderTagItem[];
   path: string;
 }
 

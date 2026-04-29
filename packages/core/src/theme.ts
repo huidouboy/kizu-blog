@@ -25,7 +25,7 @@ export interface ThemeLayouts {
   post: string;
   page: string;
   archive: string;
-  tag?: string;
+  tag: string;
 }
 
 export async function loadActiveTheme(options: LoadThemeOptions = {}): Promise<LoadedTheme> {
@@ -93,13 +93,22 @@ export async function loadThemeManifest(manifestPath: string): Promise<ThemeMani
   }
 
   const manifest: ThemeManifest = {
-    name: requireString(parsedManifest.name, "name", manifestPath),
-    version: requireString(parsedManifest.version, "version", manifestPath),
-    slots: requireStringArray(parsedManifest.slots, "slots", manifestPath),
-    pages: requireThemePages(parsedManifest.pages, manifestPath),
+    name:
+      optionalString(parsedManifest.name, "name", manifestPath) ??
+      nodePath.basename(nodePath.dirname(manifestPath)),
+    displayName: optionalString(parsedManifest.displayName, "displayName", manifestPath),
+    version: optionalString(parsedManifest.version, "version", manifestPath) ?? "0.0.0",
+    slots:
+      optionalStringArray(parsedManifest.slots, "slots", manifestPath) ?? [
+        "header",
+        "main",
+        "footer",
+      ],
+    pages: optionalThemePages(parsedManifest.pages, manifestPath),
     settings: optionalThemeSettings(parsedManifest.settings, manifestPath),
     description: optionalString(parsedManifest.description, "description", manifestPath),
     author: optionalString(parsedManifest.author, "author", manifestPath),
+    engine: optionalThemeEngine(parsedManifest.engine, manifestPath),
   };
 
   return manifest;
@@ -110,11 +119,11 @@ export async function loadThemeLayouts(
   pages: ThemePages,
 ): Promise<ThemeLayouts> {
   return {
-    home: await readThemeFile(themeRootDir, pages.home),
-    post: await readThemeFile(themeRootDir, pages.post),
-    page: await readThemeFile(themeRootDir, pages.page),
-    archive: await readThemeFile(themeRootDir, pages.archive),
-    tag: pages.tag ? await readThemeFile(themeRootDir, pages.tag) : undefined,
+    home: await readThemeFile(themeRootDir, pages.home, "home"),
+    post: await readThemeFile(themeRootDir, pages.post, "post"),
+    page: await readThemeFile(themeRootDir, pages.page, "page"),
+    archive: await readThemeFile(themeRootDir, pages.archive, "archive"),
+    tag: await readThemeFile(themeRootDir, pages.tag, "tag"),
   };
 }
 
@@ -151,35 +160,53 @@ function stringifyTemplateValue(value: unknown): string {
 
 function resolveThemeSettings(
   definitions: Record<string, ThemeSettingDefinition>,
-  overrides: Record<string, string>,
+  overrides: Record<string, string | boolean>,
 ): Record<string, string> {
   const settings: Record<string, string> = {};
 
   for (const [key, definition] of Object.entries(definitions)) {
-    settings[key] = definition.default;
+    settings[key] = stringifySettingValue(definition.default);
   }
 
   for (const [key, value] of Object.entries(overrides)) {
     const definition = definitions[key];
 
     if (!definition) {
+      settings[key] = stringifySettingValue(value);
+      continue;
+    }
+
+    if (definition.type === "color") {
+      if (typeof value !== "string" || !value.trim()) {
+        throw new Error(`Invalid theme setting "${key}": expected a color string.`);
+      }
+
       settings[key] = value;
       continue;
     }
 
-    if (definition.type === "select" && !definition.options.includes(value)) {
-      throw new Error(
-        `Invalid theme setting "${key}": expected one of ${definition.options.join(", ")}.`,
-      );
+    if (definition.type === "select") {
+      if (typeof value !== "string" || !definition.options.includes(value)) {
+        throw new Error(
+          `Invalid theme setting "${key}": expected one of ${definition.options.join(", ")}.`,
+        );
+      }
+
+      settings[key] = value;
+      continue;
     }
 
-    settings[key] = value;
+    settings[key] = normalizeBooleanThemeSetting(key, value);
   }
 
   return settings;
 }
 
-async function readThemeFile(themeRootDir: string, relativePath: string): Promise<string> {
+async function readThemeFile(
+  themeRootDir: string,
+  relativePath: string,
+  layoutName: keyof ThemePages,
+): Promise<string> {
   const filePath = nodePath.resolve(themeRootDir, relativePath);
 
   assertInsideRoot(themeRootDir, filePath);
@@ -188,7 +215,7 @@ async function readThemeFile(themeRootDir: string, relativePath: string): Promis
     return await readFile(filePath, "utf8");
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
-      throw new Error(`Missing theme layout file: ${relativePath} (${filePath})`);
+      throw new Error(`Missing required theme layout "${layoutName}": ${relativePath} (${filePath})`);
     }
 
     throw error;
@@ -203,17 +230,33 @@ function assertInsideRoot(rootDir: string, targetPath: string): void {
   }
 }
 
-function requireThemePages(value: unknown, filePath: string): ThemePages {
+function defaultThemePages(): ThemePages {
+  return {
+    home: "layouts/home.html",
+    post: "layouts/post.html",
+    page: "layouts/page.html",
+    archive: "layouts/archive.html",
+    tag: "layouts/tag.html",
+  };
+}
+
+function optionalThemePages(value: unknown, filePath: string): ThemePages {
+  const defaults = defaultThemePages();
+
+  if (value === undefined) {
+    return defaults;
+  }
+
   if (!isRecord(value)) {
     throw new Error(`${filePath}: expected "pages" to be an object.`);
   }
 
   return {
-    home: requireString(value.home, "pages.home", filePath),
-    post: requireString(value.post, "pages.post", filePath),
-    page: requireString(value.page, "pages.page", filePath),
-    archive: requireString(value.archive, "pages.archive", filePath),
-    tag: optionalString(value.tag, "pages.tag", filePath),
+    home: optionalString(value.home, "pages.home", filePath) ?? defaults.home,
+    post: optionalString(value.post, "pages.post", filePath) ?? defaults.post,
+    page: optionalString(value.page, "pages.page", filePath) ?? defaults.page,
+    archive: optionalString(value.archive, "pages.archive", filePath) ?? defaults.archive,
+    tag: optionalString(value.tag, "pages.tag", filePath) ?? defaults.tag,
   };
 }
 
@@ -247,10 +290,37 @@ function optionalThemeSettings(
     }
 
     if (type === "select") {
+      const options = requireStringArray(definition.options, `settings.${key}.options`, filePath);
+      const defaultValue = requireString(definition.default, `settings.${key}.default`, filePath);
+
+      if (options.length === 0) {
+        throw new Error(
+          `${filePath}: expected "settings.${key}.options" to include at least one value.`,
+        );
+      }
+
+      if (!options.includes(defaultValue)) {
+        throw new Error(
+          `${filePath}: expected "settings.${key}.default" to be one of ${options.join(", ")}.`,
+        );
+      }
+
       settings[key] = {
         type,
-        options: requireStringArray(definition.options, `settings.${key}.options`, filePath),
-        default: requireString(definition.default, `settings.${key}.default`, filePath),
+        options,
+        default: defaultValue,
+      };
+      continue;
+    }
+
+    if (type === "boolean") {
+      if (typeof definition.default !== "boolean") {
+        throw new Error(`${filePath}: expected "settings.${key}.default" to be a boolean.`);
+      }
+
+      settings[key] = {
+        type,
+        default: definition.default,
       };
       continue;
     }
@@ -259,6 +329,23 @@ function optionalThemeSettings(
   }
 
   return settings;
+}
+
+function optionalThemeEngine(
+  value: unknown,
+  filePath: string,
+): ThemeManifest["engine"] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(value)) {
+    throw new Error(`${filePath}: expected "engine" to be an object.`);
+  }
+
+  return {
+    version: optionalString(value.version, "engine.version", filePath),
+  };
 }
 
 function resolveTemplateValue(value: unknown, path: string): unknown {
@@ -275,7 +362,7 @@ function optionalStringRecord(
   value: unknown,
   key: string,
   filePath: string,
-): Record<string, string> | undefined {
+): Record<string, string | boolean> | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -284,17 +371,45 @@ function optionalStringRecord(
     throw new Error(`${filePath}: expected "${key}" to be an object.`);
   }
 
-  const record: Record<string, string> = {};
+  const record: Record<string, string | boolean> = {};
 
   for (const [recordKey, recordValue] of Object.entries(value)) {
-    if (typeof recordValue !== "string") {
-      throw new Error(`${filePath}: expected "${key}.${recordKey}" to be a string.`);
+    if (typeof recordValue !== "string" && typeof recordValue !== "boolean") {
+      throw new Error(`${filePath}: expected "${key}.${recordKey}" to be a string or boolean.`);
     }
 
     record[recordKey] = recordValue;
   }
 
   return record;
+}
+
+function normalizeBooleanThemeSetting(key: string, value: string | boolean): string {
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+
+  if (value === "true" || value === "false") {
+    return value;
+  }
+
+  throw new Error(`Invalid theme setting "${key}": expected true or false.`);
+}
+
+function stringifySettingValue(value: string | boolean): string {
+  return typeof value === "boolean" ? String(value) : value;
+}
+
+function optionalStringArray(
+  value: unknown,
+  key: string,
+  filePath: string,
+): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return requireStringArray(value, key, filePath);
 }
 
 function requireStringArray(value: unknown, key: string, filePath: string): string[] {

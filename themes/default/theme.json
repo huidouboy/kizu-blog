@@ -1,6 +1,12 @@
 {
   "name": "default",
+  "displayName": "Default",
   "version": "1.0.0",
+  "description": "Default modern blog theme",
+  "author": "kizu",
+  "engine": {
+    "version": ">=0.2.0"
+  },
   "slots": ["header", "main", "sidebar", "footer"],
   "pages": {
     "home": "layouts/home.html",
@@ -20,9 +26,8 @@
       "default": "classic"
     },
     "showSidebar": {
-      "type": "select",
-      "options": ["true", "false"],
-      "default": "true"
+      "type": "boolean",
+      "default": true
     },
     "animation": {
       "type": "select",

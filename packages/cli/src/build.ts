@@ -1,4 +1,5 @@
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import type { Dirent } from "node:fs";
+import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import nodePath from "node:path";
 
 import {
@@ -27,6 +28,7 @@ import type {
   PluginContext,
   RenderContext,
   RenderListItem,
+  RenderTagItem,
   SiteConfig,
   TemplateSite,
   ThemeSettings,
@@ -112,7 +114,7 @@ export async function buildSite(options: BuildSiteOptions = {}): Promise<BuildSi
   };
 
   await rm(outDir, { recursive: true, force: true });
-  await copyThemeStyles(theme, outDir);
+  await copyThemeAssets(theme, outDir);
   await writeHtmlFile(nodePath.join(outDir, "index.html"), await renderHomePage(context));
   await writeHtmlFile(
     nodePath.join(outDir, "archive", "index.html"),
@@ -238,10 +240,6 @@ async function renderPostPage(context: BuildRenderContext, post: PostContent): P
 }
 
 async function renderTagPage(context: BuildRenderContext, tagGroup: TagGroup): Promise<string> {
-  if (!context.theme.layouts.tag) {
-    return renderArchivePage(context);
-  }
-
   const content = createTagContent(context, tagGroup);
   const renderContext = createRenderContext(context, content, `/tags/${tagGroup.slug}/`);
 
@@ -310,6 +308,7 @@ function createRenderContext(
     uiText,
     posts: context.posts.map(createPostListItem),
     pages: context.pages.map(createPageListItem),
+    tags: context.tagGroups.map(createTagListItem),
     path,
   };
 }
@@ -339,7 +338,7 @@ function createTemplateSite(
 }
 
 function createThemeSettings(context: BuildRenderContext): ThemeSettings {
-  return Object.fromEntries(
+  const settings = Object.fromEntries(
     Object.entries({
       accentColor: "#7c3aed",
       layout: "classic",
@@ -348,6 +347,11 @@ function createThemeSettings(context: BuildRenderContext): ThemeSettings {
       ...context.theme.settings,
     }).map(([key, value]) => [key, escapeHtml(value)]),
   );
+
+  return {
+    ...settings,
+    settings,
+  };
 }
 
 function createHomeContent(context: BuildRenderContext): ContentObject {
@@ -361,6 +365,8 @@ function createHomeContent(context: BuildRenderContext): ContentObject {
     type: "home",
     url: "index.html",
     readingTime: "",
+    previous: "",
+    next: "",
     previousPost: "",
     nextPost: "",
   };
@@ -379,6 +385,9 @@ async function createPostContent(
     createPluginContext(context, path),
   );
 
+  const previousPost = renderAdjacentPostLink(context.posts[postIndex - 1], ui.previous, "../../");
+  const nextPost = renderAdjacentPostLink(context.posts[postIndex + 1], ui.next, "../../");
+
   return {
     title: escapeHtml(post.frontmatter.title),
     content: renderMarkdownToHtml(rawBody),
@@ -389,8 +398,10 @@ async function createPostContent(
     type: "post",
     url: `posts/${encodeRouteSegment(post.slug)}/index.html`,
     readingTime: formatReadingTime(calculateReadingMinutes(rawBody), context.site.language),
-    previousPost: renderAdjacentPostLink(context.posts[postIndex - 1], ui.previous, "../../"),
-    nextPost: renderAdjacentPostLink(context.posts[postIndex + 1], ui.next, "../../"),
+    previous: previousPost,
+    next: nextPost,
+    previousPost,
+    nextPost,
   };
 }
 
@@ -415,6 +426,8 @@ async function createPageContent(
     type: "page",
     url: `pages/${encodeRouteSegment(page.slug)}/index.html`,
     readingTime: formatReadingTime(calculateReadingMinutes(rawBody), context.site.language),
+    previous: "",
+    next: "",
     previousPost: "",
     nextPost: "",
   };
@@ -434,6 +447,8 @@ function createArchiveContent(context: BuildRenderContext): ContentObject {
     type: "archive",
     url: "archive/index.html",
     readingTime: "",
+    previous: "",
+    next: "",
     previousPost: "",
     nextPost: "",
   };
@@ -453,6 +468,8 @@ function createTagContent(context: BuildRenderContext, tagGroup: TagGroup): Cont
     type: "tag",
     url: `tags/${encodeRouteSegment(tagGroup.slug)}/index.html`,
     readingTime: "",
+    previous: "",
+    next: "",
     previousPost: "",
     nextPost: "",
   };
@@ -479,6 +496,15 @@ function createPageListItem(page: PageContent): RenderListItem {
     description: escapeHtml(page.frontmatter.description ?? ""),
     tags: "",
     excerpt: escapeHtml(createExcerptFromMarkdown(page.rawBody, page.frontmatter.description)),
+  };
+}
+
+function createTagListItem(tagGroup: TagGroup): RenderTagItem {
+  return {
+    name: escapeHtml(tagGroup.name),
+    slug: escapeHtml(tagGroup.slug),
+    url: `tags/${encodeRouteSegment(tagGroup.slug)}/index.html`,
+    count: tagGroup.posts.length,
   };
 }
 
@@ -978,18 +1004,80 @@ function injectBodyEndHtml(html: string, bodyEndHtml: string): string {
   return html.replace("</body>", `${bodyEndHtml}\n</body>`);
 }
 
-async function copyThemeStyles(theme: LoadedTheme, outDir: string): Promise<void> {
-  const stylesDir = nodePath.join(theme.rootDir, "styles");
+async function copyThemeAssets(theme: LoadedTheme, outDir: string): Promise<void> {
   const themeAssetsDir = nodePath.join(outDir, "assets", "theme");
 
+  await copyOptionalThemeDirectory(theme.rootDir, "styles", themeAssetsDir, outDir);
+  await copyOptionalThemeDirectory(
+    theme.rootDir,
+    "assets",
+    nodePath.join(themeAssetsDir, "assets"),
+    outDir,
+  );
+}
+
+async function copyOptionalThemeDirectory(
+  themeRootDir: string,
+  sourceName: "styles" | "assets",
+  targetDir: string,
+  outDir: string,
+): Promise<void> {
+  const sourceDir = nodePath.resolve(themeRootDir, sourceName);
+  const resolvedTargetDir = nodePath.resolve(targetDir);
+
+  assertInsideRoot(themeRootDir, sourceDir);
+  assertInsideRoot(outDir, resolvedTargetDir);
+
+  let entries: Dirent[];
+
   try {
-    await cp(stylesDir, themeAssetsDir, { recursive: true });
+    entries = await readdir(sourceDir, { withFileTypes: true });
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       return;
     }
 
     throw error;
+  }
+
+  await copyThemeDirectoryEntries(sourceDir, resolvedTargetDir, entries, themeRootDir, outDir);
+}
+
+async function copyThemeDirectoryEntries(
+  sourceDir: string,
+  targetDir: string,
+  entries: Dirent[],
+  themeRootDir: string,
+  outDir: string,
+): Promise<void> {
+  assertInsideRoot(themeRootDir, sourceDir);
+  assertInsideRoot(outDir, targetDir);
+  await mkdir(targetDir, { recursive: true });
+
+  for (const entry of entries) {
+    const sourcePath = nodePath.resolve(sourceDir, entry.name);
+    const targetPath = nodePath.resolve(targetDir, entry.name);
+
+    assertInsideRoot(themeRootDir, sourcePath);
+    assertInsideRoot(outDir, targetPath);
+
+    if (entry.isDirectory()) {
+      await copyThemeDirectoryEntries(
+        sourcePath,
+        targetPath,
+        await readdir(sourcePath, { withFileTypes: true }),
+        themeRootDir,
+        outDir,
+      );
+      continue;
+    }
+
+    if (!entry.isFile()) {
+      throw new Error(`Refusing to copy non-file theme asset: ${sourcePath}`);
+    }
+
+    await mkdir(nodePath.dirname(targetPath), { recursive: true });
+    await copyFile(sourcePath, targetPath);
   }
 }
 
