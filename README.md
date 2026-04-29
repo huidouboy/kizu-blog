@@ -13,8 +13,14 @@ This is the easiest path for beginners. It builds the static blog and starts the
 ```bash
 git clone https://github.com/huidouboy/kizu-blog.git
 cd kizu-blog
-corepack enable
-corepack prepare pnpm@10.8.0 --activate
+npm exec --yes pnpm@10.8.0 -- install
+npm exec --yes pnpm@10.8.0 -- build
+npm exec --yes pnpm@10.8.0 -- admin
+```
+
+If `pnpm` is already installed, you may use:
+
+```bash
 pnpm install
 pnpm build
 pnpm admin
@@ -37,8 +43,13 @@ Use this path if you only want static output and do not want to start the admin 
 ```bash
 git clone https://github.com/huidouboy/kizu-blog.git
 cd kizu-blog
-corepack enable
-corepack prepare pnpm@10.8.0 --activate
+npm exec --yes pnpm@10.8.0 -- install
+npm exec --yes pnpm@10.8.0 -- build
+```
+
+If `pnpm` is already installed, you may use:
+
+```bash
 pnpm install
 pnpm build
 ```
