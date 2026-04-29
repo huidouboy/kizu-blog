@@ -1,6 +1,6 @@
 {
   "name": "static-first-blog-engine",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "A static-first Markdown blog engine with themes, plugins, and an optional file-backed admin panel.",
   "private": true,
   "type": "module",
